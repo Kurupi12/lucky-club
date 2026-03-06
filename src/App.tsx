@@ -114,6 +114,10 @@ export default function App() {
   const [deletingId, setDeletingId] = useState<number | string | null>(null);
   const [isClearingAll, setIsClearingAll] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [tempPassword, setTempPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
   const spinAudio = useRef<HTMLAudioElement | null>(null);
   const winAudio = useRef<HTMLAudioElement | null>(null);
@@ -143,10 +147,10 @@ export default function App() {
   const STORE_WHATSAPP = "595983127102";
 
   useEffect(() => {
-    if (showAdmin) {
+    if (showAdmin && adminPassword) {
       fetchAdminData();
     }
-  }, [showAdmin]);
+  }, [showAdmin, adminPassword]);
 
   useEffect(() => {
     if (whatsapp.length === 13) {
@@ -189,15 +193,32 @@ export default function App() {
   };
 
   const fetchAdminData = async () => {
-    const [pRes, lRes, sRes] = await Promise.all([
-      fetch('/api/admin/prizes'),
-      fetch('/api/admin/leads'),
-      fetch('/api/admin/settings')
-    ]);
-    setPrizes(await pRes.json());
-    setLeads(await lRes.json());
-    const settings = await sRes.json();
-    setAdminMaxAttempts(settings.max_attempts || "3");
+    try {
+      const [pRes, lRes, sRes] = await Promise.all([
+        fetch('/api/admin/prizes', { headers: { 'Authorization': adminPassword } }),
+        fetch('/api/admin/leads', { headers: { 'Authorization': adminPassword } }),
+        fetch('/api/admin/settings', { headers: { 'Authorization': adminPassword } })
+      ]);
+      if (!pRes.ok) throw new Error("Unauthorized");
+      setPrizes(await pRes.json());
+      setLeads(await lRes.json());
+      const settings = await sRes.json();
+      setAdminMaxAttempts(settings.max_attempts || "3");
+    } catch (e) {
+      setAuthError("🔒 ACCESO DENEGADO. Intenta de nuevo.");
+      setShowAdmin(false);
+      setAdminPassword("");
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAdminPassword(tempPassword);
+    setShowAuthModal(false);
+    setShowAdmin(true);
+    setTempPassword('');
   };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
@@ -205,7 +226,7 @@ export default function App() {
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': adminPassword },
         body: JSON.stringify({ max_attempts: adminMaxAttempts })
       });
       if (res.ok) {
@@ -224,7 +245,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/admin/prizes/${editingPrize.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': adminPassword },
         body: JSON.stringify({
           name: editingPrize.name,
           probability: Number(editingPrize.probability),
@@ -250,7 +271,10 @@ export default function App() {
 
     setDeletingId(null);
     try {
-      const res = await fetch(`/api/admin/leads/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/leads/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': adminPassword }
+      });
       if (res.ok) {
         fetchAdminData();
       } else {
@@ -272,7 +296,10 @@ export default function App() {
 
     setIsClearingAll(false);
     try {
-      const res = await fetch('/api/admin/leads/all/clear', { method: 'DELETE' });
+      const res = await fetch('/api/admin/leads/all/clear', {
+        method: 'DELETE',
+        headers: { 'Authorization': adminPassword }
+      });
       if (res.ok) {
         fetchAdminData();
       } else {
@@ -575,9 +602,50 @@ export default function App() {
         Protocolo de Recompensas v2.4 // Kiosk Mode Active
       </div>
 
-      <button onClick={() => setShowAdmin(true)} className="fixed bottom-4 right-4 p-3 bg-black/40 border border-cyber-blue/20 rounded-full text-cyber-blue/40 z-20">
+      <button onClick={() => setShowAuthModal(true)} className="fixed bottom-4 right-4 p-3 bg-black/40 border border-cyber-blue/20 rounded-full text-cyber-blue/40 z-20">
         <Settings className="w-5 h-5" />
       </button>
+
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-black/80 border-2 border-cyber-blue/40 rounded-3xl p-8 shadow-[0_0_30px_rgba(0,255,255,0.15)] relative">
+              <button onClick={() => { setShowAuthModal(false); setAuthError(''); setTempPassword(''); }} className="absolute top-4 right-4 text-white/40 hover:text-cyber-pink transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="text-center mb-6">
+                <Settings className="w-10 h-10 text-cyber-pink mx-auto mb-3 animate-pulse" />
+                <h2 className="text-xl font-bold text-white tracking-widest uppercase">Seguridad</h2>
+                <p className="text-[10px] text-cyber-blue/60 font-mono mt-1">Requiere credenciales nivel admin</p>
+              </div>
+
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                <div>
+                  <input
+                    type="password"
+                    placeholder="Contraseña"
+                    value={tempPassword}
+                    onChange={(e) => setTempPassword(e.target.value)}
+                    className="w-full bg-black/40 border-2 border-cyber-blue/30 rounded-xl px-4 py-3 text-white text-center tracking-[0.2em] font-mono focus:border-cyber-pink outline-none transition-colors"
+                    autoFocus
+                  />
+                </div>
+                {authError && (
+                  <p className="text-red-500 text-xs text-center font-bold tracking-wider animate-pulse">{authError}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={!tempPassword}
+                  className="w-full bg-cyber-blue text-black font-black uppercase tracking-widest py-3 rounded-xl disabled:opacity-50 transition-all hover:bg-cyber-blue/80"
+                >
+                  Confirmar
+                </button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showAdmin && (

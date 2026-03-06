@@ -55,7 +55,17 @@ if (settingsCount.count === 0) {
 async function startServer() {
   const app = express();
   app.use(express.json());
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
+
+  // --- Admin Auth Middleware ---
+  app.use("/api/admin", (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    const adminPassword = process.env.ADMIN_PASSWORD || 'vapeclub2025';
+    if (authHeader !== adminPassword) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+  });
 
   // --- API Routes ---
 
@@ -100,7 +110,7 @@ async function startServer() {
   // Delete lead (Admin)
   app.delete("/api/admin/leads/:id", (req, res) => {
     const { id } = req.params;
-    
+
     // Convert to number explicitly as SQLite INTEGER PRIMARY KEY expects a number
     const numericId = parseInt(id, 10);
 
@@ -111,8 +121,8 @@ async function startServer() {
 
     try {
       const stmt = db.prepare("DELETE FROM leads WHERE id = ?");
-      const result = stmt.run(numericId); 
-      
+      const result = stmt.run(numericId);
+
       if (result.changes > 0) {
         console.log(`[SUCCESS] Contacto con ID ${numericId} eliminado`);
         res.json({ success: true, message: "Contacto eliminado correctamente" });
@@ -150,7 +160,7 @@ async function startServer() {
     const setting = db.prepare("SELECT value FROM settings WHERE key = 'max_attempts'").get() as { value: string } | undefined;
     const maxAttempts = parseInt(setting?.value || "3", 10) || 3;
     const attempts = db.prepare("SELECT COUNT(*) as count FROM leads WHERE whatsapp = ?").get(whatsapp) as { count: number };
-    
+
     const remaining = Math.max(0, maxAttempts - (attempts?.count || 0));
 
     // Get prizes the user has already won
@@ -163,7 +173,7 @@ async function startServer() {
 
     const totalRealPrizesCount = db.prepare("SELECT COUNT(*) as count FROM prizes WHERE name != 'Sigue Participando'").get() as { count: number };
 
-    res.json({ 
+    res.json({
       whatsapp,
       attempts: attempts.count,
       max_attempts: maxAttempts,
@@ -200,13 +210,13 @@ async function startServer() {
     // Filter prizes: exclude those already won, but always keep 'Sigue Participando'
     const prizes = db.prepare("SELECT * FROM prizes WHERE stock > 0").all() as any[];
     const filteredPrizes = prizes.filter(p => p.name === 'Sigue Participando' || !alreadyWonPrizeIds.includes(p.id));
-    
+
     if (filteredPrizes.length === 0) {
       return res.status(400).json({ error: "Ya ganaste todos los premios disponibles." });
     }
 
     const allPrizesForSymbols = db.prepare("SELECT id FROM prizes").all() as { id: number }[];
-    
+
     // Weighted random selection on filtered prizes
     let totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
     let random = Math.random() * totalProb;
@@ -239,7 +249,7 @@ async function startServer() {
         allPrizeIds[Math.floor(Math.random() * allPrizeIds.length)],
         allPrizeIds[Math.floor(Math.random() * allPrizeIds.length)]
       ];
-      
+
       // If they happen to be all the same, force the last one to be different
       if (reelSymbols[0] === reelSymbols[1] && reelSymbols[1] === reelSymbols[2]) {
         const otherIds = allPrizeIds.filter(id => id !== reelSymbols[0]);
@@ -278,7 +288,7 @@ async function startServer() {
     if (prize) {
       note = `\nNOTE:Gané ${prize} en Lucky Club.${whatsapp ? ` Mi número: ${whatsapp}` : ""}`;
     }
-    
+
     const vcard = `BEGIN:VCARD
 VERSION:3.0
 FN:El Vape Club Encarnación
@@ -303,7 +313,7 @@ END:VCARD`;
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
