@@ -241,22 +241,21 @@ async function startServer() {
     // Generate reel symbols
     let reelSymbols: number[];
     if (selectedPrize.name === "Sigue Participando") {
-      // For "Sigue Participando", show non-matching symbols
-      const allPrizeIds = allPrizesForSymbols.map(p => p.id);
-      // Pick 3 random symbols, but ensure they are not all the same
-      reelSymbols = [
-        allPrizeIds[Math.floor(Math.random() * allPrizeIds.length)],
-        allPrizeIds[Math.floor(Math.random() * allPrizeIds.length)],
-        allPrizeIds[Math.floor(Math.random() * allPrizeIds.length)]
-      ];
+      // NEAR MISS MECHANIC: First two reels show a valuable prize, the third reel ruins it.
+      const realPrizes = allPrizesForSymbols.map(p => p.id).filter(id => id !== selectedPrize.id);
 
-      // If they happen to be all the same, force the last one to be different
-      if (reelSymbols[0] === reelSymbols[1] && reelSymbols[1] === reelSymbols[2]) {
-        const otherIds = allPrizeIds.filter(id => id !== reelSymbols[0]);
-        if (otherIds.length > 0) {
-          reelSymbols[2] = otherIds[Math.floor(Math.random() * otherIds.length)];
-        }
+      const baitPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)] || allPrizesForSymbols[0].id;
+      let ruinPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)] || allPrizesForSymbols[0].id;
+
+      // Ensure the third symbol definitively does NOT match the first two
+      while (ruinPrizeId === baitPrizeId && realPrizes.length > 1) {
+        ruinPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)];
       }
+
+      // If length is 1 or something weird happens, fallback to the loss ID
+      if (ruinPrizeId === baitPrizeId) ruinPrizeId = selectedPrize.id;
+
+      reelSymbols = [baitPrizeId, baitPrizeId, ruinPrizeId];
     } else {
       // For a real win, show 3 matching symbols
       reelSymbols = [selectedPrize.id, selectedPrize.id, selectedPrize.id];

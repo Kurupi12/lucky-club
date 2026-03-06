@@ -364,11 +364,11 @@ export default function App() {
       setTimeout(() => {
         setReelsSpinning(prev => [false, prev[1], prev[2]]);
         setResult(data);
-      }, 2000);
+      }, 1500); // 1.5 segundos para la primera ficha
 
       setTimeout(() => {
         setReelsSpinning(prev => [prev[0], false, prev[2]]);
-      }, 2500);
+      }, 2500); // 2.5 segundos para la segunda ficha (¡Parece que gana!)
 
       setTimeout(() => {
         setReelsSpinning(prev => [prev[0], prev[1], false]);
@@ -400,8 +400,8 @@ export default function App() {
               loseAudio.current.play().catch(e => console.log("Lose audio play blocked:", e));
             }
           }
-        }, 3000);
-      }, 3000);
+        }, 1500); // 1.5 segundos después de la decepción de la última ficha
+      }, 4000); // 4.0 segundos en total rodando (la tercera ficha genera tensión)
 
     } catch (err: any) {
       setError(err.message);
