@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Smartphone, Zap, Trophy, Settings, Users, ArrowRight, X, RefreshCw, Droplets, Percent, Cookie, XCircle, Star, Trash2, Download } from 'lucide-react';
+import { Smartphone, Zap, Trophy, Settings, Users, ArrowRight, X, RefreshCw, Droplets, Percent, Cookie, XCircle, Star, Trash2, Download, Maximize } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import * as XLSX from 'xlsx';
 import confetti from 'canvas-confetti';
@@ -143,6 +143,22 @@ export default function App() {
       lose.pause();
     };
   }, []);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      // @ts-ignore (vendors)
+      const requestFullscreen = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || document.documentElement.msRequestFullscreen;
+      if (requestFullscreen) {
+        requestFullscreen.call(document.documentElement).catch((err: any) => {
+          console.error(`Error attempting to enable fullscreen: ${err.message}`);
+        });
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   const STORE_WHATSAPP = "595983127102";
 
@@ -602,7 +618,11 @@ export default function App() {
         Protocolo de Recompensas v2.4 // Kiosk Mode Active
       </div>
 
-      <button onClick={() => setShowAuthModal(true)} className="fixed bottom-4 right-4 p-3 bg-black/40 border border-cyber-blue/20 rounded-full text-cyber-blue/40 z-20">
+      <button onClick={toggleFullScreen} className="fixed bottom-4 right-20 p-3 bg-black/40 border border-cyber-blue/20 rounded-full text-cyber-blue/40 z-20 hover:text-cyber-pink hover:border-cyber-pink/50 transition-colors">
+        <Maximize className="w-5 h-5" />
+      </button>
+
+      <button onClick={() => setShowAuthModal(true)} className="fixed bottom-4 right-4 p-3 bg-black/40 border border-cyber-blue/20 rounded-full text-cyber-blue/40 z-20 hover:text-cyber-blue hover:border-cyber-blue/50 transition-colors">
         <Settings className="w-5 h-5" />
       </button>
 
