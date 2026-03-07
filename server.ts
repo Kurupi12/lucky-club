@@ -223,11 +223,11 @@ async function startServer() {
     let selectedPrize = filteredPrizes[filteredPrizes.length - 1];
 
     for (const prize of filteredPrizes) {
-      if (random < prize.probability) {
+      random -= prize.probability;
+      if (random <= 0) {
         selectedPrize = prize;
         break;
       }
-      random -= prize.probability;
     }
 
     // Update stock if it's a real prize
