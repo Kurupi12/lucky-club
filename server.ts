@@ -1,3 +1,4 @@
+// LuckyClub Server v2.5.1 - Fix Final QR y RNG
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
