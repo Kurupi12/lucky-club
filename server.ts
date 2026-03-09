@@ -29,7 +29,7 @@ async function startServer() {
   // --- Admin Auth Middleware ---
   app.use("/api/admin", (req, res, next) => {
     const authHeader = req.headers.authorization;
-    const adminPassword = process.env.ADMIN_PASSWORD || 'vapeclub2025';
+    const adminPassword = process.env.ADMIN_PASSWORD || '1234';
     if (authHeader !== adminPassword) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
