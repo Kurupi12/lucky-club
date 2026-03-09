@@ -30,11 +30,11 @@ interface Lead {
 
 const SymbolIcon = ({ id, className }: { id: number | string; className?: string }) => {
   const images: Record<number | string, string> = {
-    1: "/el_vape_club.png",// Líquido
-    2: "/the_black_sheep.png", // Descuento
-    3: "/cereza.png", // Alfajor
-    4: "/limon.png", // Sigue Participando
-    'default': "/big_win" // Default
+    1: "/the_black_sheep.png", // THE BLACK SHEEP (POD)
+    2: "/el_vape_club.png",      // COLGANTE EL VAPE CLUB
+    3: "/cereza.png",             // Alfajor Rasta
+    4: "/limon.png",              // Sigue Participando
+    'default': "/big_win.png"     // Default
   };
 
   const src = images[id] || images['default'];
