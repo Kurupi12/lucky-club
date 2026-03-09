@@ -41,7 +41,10 @@ async function startServer() {
   // Get all prizes (Admin)
   app.get("/api/admin/prizes", async (req, res) => {
     const { data: prizes, error } = await supabase.from('prizes').select('*').order('id');
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      console.error("Supabase Error (Prizes):", error);
+      return res.status(500).json({ error: error.message });
+    }
     res.json(prizes || []);
   });
 
