@@ -398,7 +398,7 @@ export default function App() {
 
         setTimeout(() => {
           setShowResultOverlay(true);
-          if (data.prize.name !== "Sigue Participando") {
+          if (data.isWin) {
             setHasWon(true);
             if (winAudio.current) {
               winAudio.current.currentTime = 0;
@@ -564,13 +564,13 @@ export default function App() {
             animate={{ scale: 1, opacity: 1 }}
             className={cn(
               "relative p-1 rounded-3xl overflow-hidden",
-              result?.prize.name === "Sigue Participando"
+              !result?.isWin
                 ? "bg-cyber-blue/20"
                 : "bg-gradient-to-r from-cyber-pink via-cyber-blue to-cyber-pink animate-festive-glow"
             )}
           >
             <div className="bg-cyber-dark/95 backdrop-blur-xl rounded-[calc(1.5rem-1px)] p-8 text-center space-y-4">
-              {result?.prize.name === "Sigue Participando" ? (
+              {!result?.isWin ? (
                 <>
                   <RefreshCw className="w-12 h-12 text-gray-400 mx-auto" />
                   <h2 className="text-2xl font-bold text-white">¡Casi lo logras!</h2>

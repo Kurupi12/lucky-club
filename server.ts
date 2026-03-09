@@ -224,10 +224,16 @@ async function startServer() {
       reelSymbols = [selectedPrize.id, selectedPrize.id, selectedPrize.id];
     }
 
+    // Actualizar stock si es un premio real
+    if (!isLoserPrize) {
+      await supabase.from('prizes').update({ stock: selectedPrize.stock - 1 }).eq('id', selectedPrize.id);
+    }
+
     res.json({
       prize: selectedPrize,
       reels: reelSymbols,
       remaining: Math.max(0, maxAttempts - (attempts + 1)),
+      isWin: !isLoserPrize,
       hasWon: !isLoserPrize || alreadyWonPrizeIds.length > 0,
       allWon: (alreadyWonPrizeIds.length + (!isLoserPrize ? 1 : 0)) >= (allPrizes.length - 1)
     });
