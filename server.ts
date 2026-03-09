@@ -164,16 +164,42 @@ async function startServer() {
       return res.status(400).json({ error: "Ya ganaste todos los premios disponibles." });
     }
 
-    // Roulette RNG
-    let totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
-    let random = Math.random() * totalProb;
-    let selectedPrize = filteredPrizes[filteredPrizes.length - 1];
+    // --- LÓGICA DE NEGOCIO: FORZAR GANAR EN EL ÚLTIMO TIRO ---
+    let selectedPrize = filteredPrizes[filteredPrizes.length - 1]; // Default (usually Sigue Participando)
 
-    for (const prize of filteredPrizes) {
-      random -= prize.probability;
-      if (random <= 0) {
-        selectedPrize = prize;
-        break;
+    // Si es el tiro 1 o 2, forzamos "Sigue Participando" para crear tensión
+    if (attempts < maxAttempts - 1) {
+      const continuePrize = filteredPrizes.find(p => p.name === "Sigue Participando");
+      if (continuePrize) {
+        selectedPrize = continuePrize;
+      }
+    } else {
+      // SI ES EL ÚLTIMO TIRO (Intento 3):
+      // Si el cliente NO ha ganado nada aún, priorizamos que gane algo real
+      const realPrizes = filteredPrizes.filter(p => p.name !== "Sigue Participando");
+      
+      if (alreadyWonPrizeIds.length === 0 && realPrizes.length > 0) {
+        // Recalculamos probabilidades solo entre premios reales para asegurar el QR
+        let realTotalProb = realPrizes.reduce((sum, p) => sum + p.probability, 0);
+        let random = Math.random() * realTotalProb;
+        for (const prize of realPrizes) {
+          random -= prize.probability;
+          if (random <= 0) {
+            selectedPrize = prize;
+            break;
+          }
+        }
+      } else {
+        // Si ya ganó algo o no hay stock, usamos el RNG normal
+        let totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
+        let random = Math.random() * totalProb;
+        for (const prize of filteredPrizes) {
+          random -= prize.probability;
+          if (random <= 0) {
+            selectedPrize = prize;
+            break;
+          }
+        }
       }
     }
 
