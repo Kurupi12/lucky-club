@@ -216,12 +216,11 @@ async function startServer() {
     if (selectedPrize.name === "Sigue Participando") {
       const realPrizes = allPrizes.map(p => p.id).filter(id => id !== selectedPrize.id);
       const baitPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)] || allPrizes[0].id;
-      let ruinPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)] || allPrizes[0].id;
       
-      while (ruinPrizeId === baitPrizeId && realPrizes.length > 1) {
-        ruinPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)];
-      }
-      if (ruinPrizeId === baitPrizeId) ruinPrizeId = selectedPrize.id;
+      // La tercera ficha (ruin) DEBE ser distinta a la de bait para no engañar con un "Ganaste" falso
+      // Usamos el ID del propio "Sigue Participando" (limon) como "ruina" para romper la fila
+      const ruinPrizeId = selectedPrize.id; 
+      
       reelSymbols = [baitPrizeId, baitPrizeId, ruinPrizeId];
     } else {
       reelSymbols = [selectedPrize.id, selectedPrize.id, selectedPrize.id];
