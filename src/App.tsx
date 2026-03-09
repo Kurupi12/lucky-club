@@ -99,7 +99,7 @@ const SlotReel = ({ symbol, spinning }: { symbol: string | number; spinning: boo
 export default function App() {
   const [whatsapp, setWhatsapp] = useState('+595');
   const [reelsSpinning, setReelsSpinning] = useState([false, false, false]);
-  const [result, setResult] = useState<{ prize: Prize; reels: number[] } | null>(null);
+  const [result, setResult] = useState<{ prize: Prize; reels: number[]; isWin: boolean } | null>(null);
   const [showResultOverlay, setShowResultOverlay] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [prizes, setPrizes] = useState<Prize[]>([]);

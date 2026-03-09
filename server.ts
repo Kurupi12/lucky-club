@@ -1,4 +1,4 @@
-// LuckyClub Server v2.5.1 - Fix Final QR y RNG
+// LuckyClub Server v2.5.2 - Blindaje Total RNG
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -155,43 +155,50 @@ async function startServer() {
 
     const { data: wonLeads } = await supabase.from('leads').select('prize_id, prizes!inner(name)').eq('whatsapp', whatsapp).neq('prizes.name', 'Sigue Participando');
     const alreadyWonPrizeIds = wonLeads?.map(l => l.prize_id) || [];
-
+    // Obtener premios del inventario
     const { data: allPrizes } = await supabase.from('prizes').select('*').order('id');
     if (!allPrizes) return res.status(500).json({ error: "Error leyendo premios" });
     
-    const filteredPrizes = allPrizes.filter(p => p.stock > 0 && (p.name === 'Sigue Participando' || !alreadyWonPrizeIds.includes(p.id)));
+    // Función auxiliar para identificar el premio perdedor ("Sigue Participando")
+    const isLoser = (p: any) => p.id === 4 || p.name.trim().toLowerCase().includes("sigue participando");
 
-    if (filteredPrizes.length === 0) {
-      return res.status(400).json({ error: "Ya ganaste todos los premios disponibles." });
-    }
+    const filteredPrizes = allPrizes.filter(p => p.stock > 0 && (isLoser(p) || !alreadyWonPrizeIds.includes(p.id)));
+    
+    let selectedPrize: any | null = null; // Changed Prize to any for type compatibility
 
-    // --- LÓGICA DE NEGOCIO: FORZAR GANAR EN EL ÚLTIMO TIRO ---
-    let selectedPrize = filteredPrizes[filteredPrizes.length - 1]; // Default (usually Sigue Participando)
-
-    // Si es el tiro 1 o 2, forzamos "Sigue Participando" para crear tensión
-    if (attempts < maxAttempts - 1) {
-      const continuePrize = filteredPrizes.find(p => p.id === 4 || p.name.trim().toLowerCase() === "sigue participando");
-      if (continuePrize) {
-        selectedPrize = continuePrize;
+    // LÓGICA DE NEGOCIO:
+    if (filteredPrizes.length > 0) {
+      // Si es el tiro 1 o 2, forzamos "Sigue Participando" para crear tensión
+      if (attempts < maxAttempts - 1) {
+        const continuePrize = filteredPrizes.find(isLoser);
+        if (continuePrize) {
+          selectedPrize = continuePrize;
+        }
       }
-    } else {
-      // SI ES EL ÚLTIMO TIRO (Intento 3):
-      // Si el cliente NO ha ganado nada aún, priorizamos que gane algo real
-      const realPrizes = filteredPrizes.filter(p => p.id !== 4 && p.name.trim().toLowerCase() !== "sigue participando");
       
-      if (alreadyWonPrizeIds.length === 0 && realPrizes.length > 0) {
-        // Recalculamos probabilidades solo entre premios reales para asegurar el QR
-        let realTotalProb = realPrizes.reduce((sum, p) => sum + p.probability, 0);
-        let random = Math.random() * realTotalProb;
-        for (const prize of realPrizes) {
-          random -= prize.probability;
-          if (random <= 0) {
-            selectedPrize = prize;
-            break;
+      // Si no se forzó perdedor (o no se encontró), usamos el RNG
+      if (!selectedPrize) {
+        if (attempts >= maxAttempts - 1) {
+          // SI ES EL ÚLTIMO TIRO:
+          // Si el cliente NO ha ganado nada aún, priorizamos que gane algo real
+          const realPrizes = filteredPrizes.filter(p => !isLoser(p));
+          
+          if (alreadyWonPrizeIds.length === 0 && realPrizes.length > 0) {
+            let realTotalProb = realPrizes.reduce((sum, p) => sum + p.probability, 0);
+            let random = Math.random() * realTotalProb;
+            for (const prize of realPrizes) {
+              random -= prize.probability;
+              if (random <= 0) {
+                selectedPrize = prize;
+                break;
+              }
+            }
           }
         }
-      } else {
-        // Si ya ganó algo o no hay stock, usamos el RNG normal
+      }
+
+      // Si aún no hay premio (tiro normal o no se forzó victoria)
+      if (!selectedPrize) {
         let totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
         let random = Math.random() * totalProb;
         for (const prize of filteredPrizes) {
@@ -204,11 +211,15 @@ async function startServer() {
       }
     }
 
+    if (!selectedPrize) {
+      return res.status(500).json({ error: "No hay premios disponibles" });
+    }
+
     // Guardamos el lead en Supabase
     await supabase.from('leads').insert({ whatsapp, prize_id: selectedPrize.id });
 
-    // Definimos si el premio es un "perdedor" (ID 4 o nombre) de forma robusta
-    const isLoserPrize = selectedPrize.id === 4 || selectedPrize.name.trim().toLowerCase().includes("sigue participando");
+    // Definimos si el premio es un "perdedor" de forma robusta
+    const isLoserPrize = isLoser(selectedPrize);
 
     // Calculamos los símbolos de la ruleta
     let reelSymbols: number[];
