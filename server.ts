@@ -11,8 +11,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize Supabase Client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+const supabaseUrl = (process.env.SUPABASE_URL || '').trim().replace(/^['"]|['"]$/g, '');
+const supabaseKey = (process.env.SUPABASE_SERVICE_KEY || '').trim().replace(/^['"]|['"]$/g, '');
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY in .env");
