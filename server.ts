@@ -169,14 +169,14 @@ async function startServer() {
 
     // Si es el tiro 1 o 2, forzamos "Sigue Participando" para crear tensión
     if (attempts < maxAttempts - 1) {
-      const continuePrize = filteredPrizes.find(p => p.name === "Sigue Participando");
+      const continuePrize = filteredPrizes.find(p => p.id === 4 || p.name.trim().toLowerCase() === "sigue participando");
       if (continuePrize) {
         selectedPrize = continuePrize;
       }
     } else {
       // SI ES EL ÚLTIMO TIRO (Intento 3):
       // Si el cliente NO ha ganado nada aún, priorizamos que gane algo real
-      const realPrizes = filteredPrizes.filter(p => p.name !== "Sigue Participando");
+      const realPrizes = filteredPrizes.filter(p => p.id !== 4 && p.name.trim().toLowerCase() !== "sigue participando");
       
       if (alreadyWonPrizeIds.length === 0 && realPrizes.length > 0) {
         // Recalculamos probabilidades solo entre premios reales para asegurar el QR
@@ -203,26 +203,24 @@ async function startServer() {
       }
     }
 
-    // Update stock if real prize
-    if (selectedPrize.name !== "Sigue Participando") {
-      await supabase.from('prizes').update({ stock: selectedPrize.stock - 1 }).eq('id', selectedPrize.id);
-    }
-
-    // Record lead
+    // Guardamos el lead en Supabase
     await supabase.from('leads').insert({ whatsapp, prize_id: selectedPrize.id });
 
-    // Symbols Math
+    // Definimos si el premio es un "perdedor" (ID 4 o nombre) de forma robusta
+    const isLoserPrize = selectedPrize.id === 4 || selectedPrize.name.trim().toLowerCase().includes("sigue participando");
+
+    // Calculamos los símbolos de la ruleta
     let reelSymbols: number[];
-    if (selectedPrize.name === "Sigue Participando") {
-      const realPrizes = allPrizes.map(p => p.id).filter(id => id !== selectedPrize.id);
+    if (isLoserPrize) {
+      // Si pierde, mostramos dos íconos iguales (bait) y el tercero diferente (ruin)
+      const realPrizes = allPrizes.map(p => p.id).filter(id => id !== selectedPrize.id && id !== 4);
       const baitPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)] || allPrizes[0].id;
       
-      // La tercera ficha (ruin) DEBE ser distinta a la de bait para no engañar con un "Ganaste" falso
-      // Usamos el ID del propio "Sigue Participando" (limon) como "ruina" para romper la fila
-      const ruinPrizeId = selectedPrize.id; 
-      
+      // La tercera ficha SIEMPRE será el limón (ID 4) para romper la fila
+      const ruinPrizeId = 4; 
       reelSymbols = [baitPrizeId, baitPrizeId, ruinPrizeId];
     } else {
+      // Si gana, los tres iguales
       reelSymbols = [selectedPrize.id, selectedPrize.id, selectedPrize.id];
     }
 
@@ -230,8 +228,8 @@ async function startServer() {
       prize: selectedPrize,
       reels: reelSymbols,
       remaining: Math.max(0, maxAttempts - (attempts + 1)),
-      hasWon: selectedPrize.name !== "Sigue Participando" || alreadyWonPrizeIds.length > 0,
-      allWon: (alreadyWonPrizeIds.length + (selectedPrize.name !== "Sigue Participando" ? 1 : 0)) >= (allPrizes.length - 1)
+      hasWon: !isLoserPrize || alreadyWonPrizeIds.length > 0,
+      allWon: (alreadyWonPrizeIds.length + (!isLoserPrize ? 1 : 0)) >= (allPrizes.length - 1)
     });
   });
 
