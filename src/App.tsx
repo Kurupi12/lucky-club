@@ -520,49 +520,41 @@ export default function App() {
             </div>
 
             <div className="space-y-4 max-w-sm mx-auto">
-              <div className="relative">
-                <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-cyber-blue w-5 h-5" />
+              <div className="relative flex items-center">
+                <Smartphone className="absolute left-4 text-cyber-blue w-5 h-5" />
+                <span className="absolute left-11 text-xl text-white/50 font-mono select-none pointer-events-none">
+                  +595
+                </span>
                 <input
                   type="tel"
-                  placeholder="+595 9XX XXX XXX"
-                  value={whatsapp}
+                  placeholder="9XX XXX XXX"
+                  value={whatsapp.replace('+595', '')}
                   onChange={(e) => {
-                    const prefix = '+595';
-                    let val = e.target.value;
-
-                    // Asegurar que siempre empiece con el prefijo
-                    if (!val.startsWith(prefix)) {
-                      const digits = val.replace(/\D/g, '');
-                      // Si pegan algo que ya tiene 595, lo limpiamos para no duplicar
-                      if (digits.startsWith('595')) {
-                        val = prefix + digits.slice(3);
-                      } else {
-                        val = prefix + digits;
-                      }
+                    let val = e.target.value.replace(/\D/g, '');
+                    
+                    // Si pegan el número con el código de país, lo limpiamos
+                    if (val.startsWith('595')) {
+                      val = val.slice(3);
+                    }
+                    
+                    // No permitir el 0 inicial del número local
+                    if (val.startsWith('0')) {
+                      val = val.slice(1);
                     }
 
-                    // Extraer solo los dígitos después del prefijo
-                    let rest = val.slice(prefix.length).replace(/\D/g, '');
-
-                    // REGLA: No permitir que el primer dígito después de +595 sea '0'
-                    if (rest.startsWith('0')) {
-                      rest = rest.slice(1);
-                    }
-
-                    const finalVal = prefix + rest;
-
-                    // REGLA: Máximo 13 caracteres en total (+595 + 9 dígitos)
-                    if (finalVal.length <= 13) {
-                      setWhatsapp(finalVal);
-                      // Auto-blur al completar exactamente los 13 caracteres
-                      if (finalVal.length === 13) {
+                    // Máximo 9 dígitos (formato Paraguay: 9xx xxx xxx)
+                    if (val.length <= 9) {
+                      const finalNum = '+595' + val;
+                      setWhatsapp(finalNum);
+                      
+                      if (val.length === 9) {
                         const target = e.target as HTMLInputElement;
                         setTimeout(() => target.blur(), 50);
                       }
                     }
                   }}
                   disabled={reelsSpinning.some(s => s) || !!result}
-                  className="w-full bg-black/40 border-2 border-cyber-blue/30 rounded-xl py-4 pl-12 pr-4 text-xl focus:border-cyber-pink outline-none text-white font-mono"
+                  className="w-full bg-black/40 border-2 border-cyber-blue/30 rounded-xl py-4 pl-24 pr-4 text-xl focus:border-cyber-pink outline-none text-white font-mono transition-all"
                 />
               </div>
 
