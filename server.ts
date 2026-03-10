@@ -200,37 +200,34 @@ async function startServer() {
     
     let selectedPrize: any | null = null;
     let silentConversion = false;
+    let visualBaitPrize: any = null;
 
-    // LÓGICA DE NEGOCIO:
-    if (filteredPrizes.length > 0) {
-      // Tiro 1 o 2 de CADA BLOQUE de 3
-      const attemptsInThisBlock = attempts % 3;
-      if (attemptsInThisBlock < 2) {
-        const continuePrize = filteredPrizes.find(isLoser);
-        if (continuePrize) {
-          selectedPrize = continuePrize;
-        }
+    // 1. SORTEO REAL (sobre el 100% pool con stock para proteger el mayor)
+    const totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
+    let randomRoll = Math.random() * totalProb;
+    for (const p of filteredPrizes) {
+      randomRoll -= p.probability;
+      if (randomRoll <= 0) {
+        visualBaitPrize = p;
+        break;
       }
-      
-      // Si toca ganar (tiro 3) o no se forzó perdedor: RNG sobre el pool Total (con stock)
-      if (!selectedPrize) {
-        // SORTEO SOBRE EL 100% PARA PROTEGER EL PREMIO MAYOR
-        let totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
-        let random = Math.random() * totalProb;
-        for (const prize of filteredPrizes) {
-          random -= prize.probability;
-          if (random <= 0) {
-            selectedPrize = prize;
-            break;
-          }
-        }
+    }
+    if (!visualBaitPrize) visualBaitPrize = filteredPrizes[0];
 
-        // Si es el tiro 3 y tocó el Limón, pero el cliente NO ha ganado nada en sus tiros actuales, 
-        // podríamos forzar victoria si quisieras, pero según tu regla mantendremos el RNG.
-        // REGLA DE EXCLUSIÓN: Si el premio ya lo tiene, se convierte en pérdida silenciosa.
-        if (selectedPrize && !isLoser(selectedPrize) && alreadyWonPrizeIds.includes(selectedPrize.id)) {
-          silentConversion = true;
-        }
+    // 2. LÓGICA DE TIRO:
+    const attemptsInThisBlock = attempts % 3;
+    const isForcedLoser = attemptsInThisBlock < 2;
+
+    if (isForcedLoser) {
+      // Tiros 1 y 2: Forzamos pérdida ("Sigue Participando")
+      selectedPrize = filteredPrizes.find(isLoser) || visualBaitPrize;
+    } else {
+      // Tiro 3: Sorteo real (usamos el visualBaitPrize que ya sorteamos arriba)
+      selectedPrize = visualBaitPrize;
+      
+      // REGLA DE EXCLUSIÓN: Si el premio CAPTADO ya lo tiene, se convierte en pérdida silenciosa visualmente.
+      if (selectedPrize && !isLoser(selectedPrize) && alreadyWonPrizeIds.includes(selectedPrize.id)) {
+        silentConversion = true;
       }
     }
 
@@ -238,35 +235,29 @@ async function startServer() {
       return res.status(500).json({ error: "No hay premios disponibles" });
     }
 
-    // Si hubo conversión silenciosa, para la base de datos es un "Sigue Participando"
-    const finalPrizeToRecord = silentConversion ? allPrizes.find(isLoser) || selectedPrize : selectedPrize;
+    // Si hubo conversión silenciosa o fue tiro forzado, para la base de datos es un "Sigue Participando"
+    const finalPrizeToRecord = (silentConversion || isForcedLoser) ? allPrizes.find(isLoser) || selectedPrize : selectedPrize;
 
-    // Guardamos el lead en Supabase
+    // Guardamos el lead en Supabase con el premio REAL adjudicado
     await supabase.from('leads').insert({ whatsapp, prize_id: finalPrizeToRecord.id });
 
-    // Definimos si el premio es un "perdedor" para el frontend
-    const isLoserPrize = silentConversion || isLoser(selectedPrize);
+    // Definimos si el resultado es un "perdedor" para el frontend (no hay 3 iguales)
+    const isLoserPrize = silentConversion || isForcedLoser || isLoser(selectedPrize);
 
     // Calculamos los símbolos de la ruleta
     let reelSymbols: number[];
     if (isLoserPrize) {
-      // Si pierde, mostramos dos íconos iguales (bait) y el tercero diferente (ruin)
+      // Usamos visualBaitPrize para crear tensión (no siempre limón)
+      const baitId = visualBaitPrize.id;
       const possibleIds = allPrizes.map(p => p.id);
       
-      // Usamos el premio que salió en el sorteo (aunque ya lo tenga) como "bait" para crear tensión
-      const baitPrizeId = selectedPrize.id;
+      // Buscamos un RUIN que sea diferente al bait
+      const otherIds = possibleIds.filter(id => id !== baitId);
+      const ruinId = otherIds[Math.floor(Math.random() * otherIds.length)] || (baitId === 4 ? 1 : 4);
       
-      // La tercera ficha será CUALQUIERA diferente para romper la fila (no solo limón)
-      let ruinPrizeId = possibleIds[Math.floor(Math.random() * possibleIds.length)];
-      if (ruinPrizeId === baitPrizeId) {
-        // Forzar uno diferente si coinciden
-        const otherPrizes = possibleIds.filter(id => id !== baitPrizeId);
-        ruinPrizeId = otherPrizes[Math.floor(Math.random() * otherPrizes.length)] || (baitPrizeId === 4 ? 1 : 4);
-      }
-      
-      reelSymbols = [baitPrizeId, baitPrizeId, ruinPrizeId];
+      reelSymbols = [baitId, baitId, ruinId];
     } else {
-      // Si gana de verdad
+      // Ganador real: los tres iguales
       reelSymbols = [selectedPrize.id, selectedPrize.id, selectedPrize.id];
     }
 
