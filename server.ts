@@ -1,4 +1,4 @@
-// LuckyClub Server v2.6.0 - Fix Desbloqueo Manual
+// LuckyClub Server v2.6.2 - PIN UX Fix & Auto-Submit
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -145,11 +145,13 @@ async function startServer() {
     const { whatsapp, pin } = req.body;
     const adminPass = process.env.ADMIN_PASSWORD || "1234";
 
+    console.log(`[UNLOCK REQUEST] Phone: ${whatsapp}, PIN: ${pin}`);
     if (pin !== adminPass) return res.status(401).json({ error: "PIN incorrecto" });
     if (!whatsapp) return res.status(400).json({ error: "WhatsApp requerido" });
 
     const { error } = await supabase.from('manual_unlocks').insert({ whatsapp });
     if (error) {
+      console.error(`[UNLOCK ERROR]`, error);
       // Si la tabla no existe en este proyecto nuevo, intentamos informar o manejar el error
       if (error.code === '42P01') {
         return res.status(500).json({ error: "Error técnico: La tabla 'manual_unlocks' no existe en Supabase. Por favor contacta soporte." });
@@ -157,6 +159,7 @@ async function startServer() {
       return res.status(500).json({ error: error.message });
     }
 
+    console.log(`[UNLOCK SUCCESS] Habilitados tiros para ${whatsapp}`);
     res.status(200).json({ success: true, message: "Has habilitado 3 tiros nuevos para " + whatsapp });
   });
 

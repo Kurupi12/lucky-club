@@ -699,15 +699,23 @@ export default function App() {
                 <div>
                   <input
                     type="password"
+                    inputMode="numeric"
                     placeholder="Contraseña"
                     value={tempPassword}
-                    onChange={(e) => setTempPassword(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setTempPassword(val);
+                      if (val.length === 4) {
+                        const form = e.target.form;
+                        if (form) setTimeout(() => form.requestSubmit(), 50);
+                      }
+                    }}
                     className="w-full bg-black/40 border-2 border-cyber-blue/30 rounded-xl px-4 py-3 text-white text-center tracking-[0.2em] font-mono focus:border-cyber-pink outline-none transition-colors"
                     autoFocus
                   />
                 </div>
                 {authError && (
-                  <p className="text-red-500 text-xs text-center font-bold tracking-wider animate-pulse">{authError}</p>
+                  <p className="text-red-500 text-xs text-center font-bold tracking-wider animate-pulse mb-4">{authError}</p>
                 )}
                 <button
                   type="submit"
@@ -945,17 +953,30 @@ export default function App() {
                   <div className="relative">
                     <input
                       type="password"
-                      placeholder="PIN CAJERO"
+                      inputMode="numeric"
+                      placeholder="PIN"
                       value={unlockPin}
-                      onChange={(e) => setUnlockPin(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setUnlockPin(val);
+                        if (val.length === 4) {
+                          const target = e.target;
+                          target.blur();
+                          const form = target.form;
+                          if (form) setTimeout(() => form.requestSubmit(), 50);
+                        }
+                      }}
                       className="w-full bg-white/5 border border-cyber-blue/30 rounded-lg py-3 px-4 text-center text-xl font-mono tracking-[0.5em] focus:border-cyber-blue outline-none text-white"
                       autoFocus
                     />
                   </div>
+                  {error && (
+                    <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">{error}</p>
+                  )}
                   <button
                     type="submit"
-                    disabled={isUnlocking}
-                    className="w-full py-4 bg-cyber-blue text-black font-black rounded-xl shadow-[0_0_15px_rgba(0,255,255,0.4)] active:scale-95 transition-all text-sm uppercase tracking-widest"
+                    disabled={isUnlocking || unlockPin.length < 4}
+                    className="w-full py-4 bg-cyber-blue text-black font-black rounded-xl shadow-[0_0_15px_rgba(0,255,255,0.4)] active:scale-95 transition-all text-sm uppercase tracking-widest disabled:opacity-50"
                   >
                     {isUnlocking ? 'HABILITANDO...' : 'CONFIRMAR CARGA'}
                   </button>
