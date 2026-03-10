@@ -1,4 +1,4 @@
-// LuckyClub Server v2.6.4 - Final Unlock Fix
+// LuckyClub Server v2.6.5 - UI Polish: Removed browser alert
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";

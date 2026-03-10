@@ -379,7 +379,6 @@ export default function App() {
         setUnlockPin('');
         setError('');
         await fetchUserStatus(whatsapp);
-        setTimeout(() => alert(data.message || 'Habilitado con éxito'), 100);
       } else {
         setError(data.error || 'Error de autorización (PIN incorrecto)');
       }
@@ -566,17 +565,17 @@ export default function App() {
                 </div>
               ) : remainingAttempts !== null ? (
                 <div className="flex justify-center gap-2">
-                  {[...Array(maxAttempts)].map((_, i) => (
+                  {[...Array(3)].map((_, i) => (
                     <div
                       key={i}
                       className={cn(
                         "w-3 h-3 rounded-full border border-cyber-blue/50",
-                        i < (remainingAttempts) ? "bg-cyber-blue shadow-[0_0_8px_rgba(0,255,255,0.6)]" : "bg-transparent"
+                        i < Math.min(3, remainingAttempts) ? "bg-cyber-blue shadow-[0_0_8px_rgba(0,255,255,0.6)]" : "bg-transparent"
                       )}
                     />
                   ))}
                   <span className="ml-2 text-[10px] text-cyber-blue/60 font-mono uppercase tracking-tighter">
-                    {allWon ? '¡Ya ganaste todo!' : (hasWon ? '¡Ya ganaste! Sigue por más' : (remainingAttempts > 0 ? `${remainingAttempts} intentos` : 'Sin intentos'))}
+                    {allWon ? '¡Ya ganaste todo!' : (hasWon ? '¡Ya ganaste! Sigue por más' : (remainingAttempts > 0 ? `${remainingAttempts} ${remainingAttempts === 1 ? 'intento' : 'intentos'}` : 'Sin intentos'))}
                   </span>
                 </div>
               ) : (
