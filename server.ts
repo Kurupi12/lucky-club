@@ -1,4 +1,4 @@
-// LuckyClub Server v2.6.3 - Bypass 401 Proxy issues
+// LuckyClub Server v2.6.4 - Final Unlock Fix
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -140,8 +140,8 @@ async function startServer() {
     });
   });
 
-  // Nuevo endpoint para que el cajero habilite más tiros
-  app.post("/api/admin/unlock", async (req, res) => {
+  // Endpoint para que el cajero habilite más tiros (Fuera de /api/admin para evitar middleware)
+  app.post("/api/unlock", async (req, res) => {
     const { whatsapp, pin } = req.body;
     const adminPass = process.env.ADMIN_PASSWORD || "1234";
 
