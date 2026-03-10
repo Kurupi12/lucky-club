@@ -1,4 +1,4 @@
-// LuckyClub Server v2.6.8 - Admin UI Fix: Stock Alert threshold at 1 unit
+// LuckyClub Server v2.7.0 - Premium Visuals: Expanded & Enhanced Reels
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";

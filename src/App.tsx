@@ -56,42 +56,97 @@ const SlotReel = ({ symbol, spinning }: { symbol: string | number; spinning: boo
 
   return (
     <div className={cn(
-      "w-24 h-36 md:w-48 md:h-72 bg-black/60 border-2 rounded-2xl flex items-center justify-center overflow-hidden relative transition-all duration-500",
-      spinning ? "border-cyber-pink shadow-[0_0_20px_rgba(255,0,255,0.3)]" : "border-cyber-blue/40 shadow-[0_0_15px_rgba(0,255,255,0.2)]"
+      "w-28 h-44 md:w-56 md:h-80 bg-gradient-to-b from-black/80 to-black/40 border-2 rounded-3xl flex items-center justify-center overflow-hidden relative transition-all duration-700",
+      spinning 
+        ? "border-cyber-pink shadow-[0_0_40px_rgba(255,0,255,0.5)] scale-105" 
+        : "border-cyber-blue/30 shadow-[0_0_20px_rgba(0,255,255,0.15)]"
     )}>
-      <AnimatePresence mode="popLayout">
-        {spinning ? (
-          <motion.div
-            key="spinning"
-            initial={{ y: -400 }}
-            animate={{ y: 400 }}
-            transition={{ repeat: Infinity, duration: 0.12, ease: "linear" }}
-            className="flex flex-col gap-8"
-          >
-            {spinSequence.map((id, index) => (
-              <div key={`spin-${id}-${index}`} className="flex justify-center">
-                <SymbolIcon id={id} className="w-14 h-14 md:w-28 md:h-28 opacity-40 grayscale blur-[1px]" />
-              </div>
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div
-            key={symbol}
-            initial={{ y: -100, opacity: 0, scale: 0.5 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            className="w-full h-full flex items-center justify-center p-3 md:p-6"
-          >
-            {symbol === '?' ? (
-              <span className="text-5xl md:text-9xl font-black text-cyber-blue neon-text animate-pulse">?</span>
-            ) : (
-              <SymbolIcon id={symbol} className="w-16 h-16 md:w-36 md:h-36" />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/90 via-transparent to-black/90" />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyber-blue/50 to-transparent" />
-      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyber-blue/50 to-transparent" />
+      {/* Capas estéticas de fondo */}
+      <div className="absolute inset-0 z-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
+      <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-cyber-blue/10 to-transparent z-0" />
+      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-cyber-pink/10 to-transparent z-0" />
+      
+      {/* Brillo de cristal frontal */}
+      <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-tr from-white/5 via-transparent to-white/5 opacity-40" />
+
+      <div className="relative w-full h-full flex items-center justify-center z-10">
+        <AnimatePresence mode="popLayout" initial={false}>
+          {spinning ? (
+            <motion.div
+              key="spinning"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center"
+            >
+              <motion.div
+                animate={{ y: [-1000, 0] }}
+                transition={{ repeat: Infinity, duration: 0.15, ease: "linear" }}
+                className="flex flex-col gap-12"
+              >
+                {[...spinSequence, ...spinSequence, ...spinSequence].map((id, index) => (
+                  <div key={`spin-${index}`} className="flex justify-center">
+                    <SymbolIcon id={id} className="w-20 h-20 md:w-40 md:h-40 opacity-30 blur-[2px] grayscale brightness-150" />
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={symbol}
+              initial={{ y: -200, opacity: 0, scale: 0.4, filter: 'blur(10px)' }}
+              animate={{ y: 0, opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 400, 
+                damping: 18,
+                mass: 1
+              }}
+              className="w-full h-full flex items-center justify-center p-3 md:p-6"
+            >
+              {symbol === '?' ? (
+                <motion.span 
+                  animate={{ 
+                    scale: [1, 1.15, 1],
+                    opacity: [0.5, 1, 0.5],
+                    textShadow: ["0 0 10px #00ffff", "0 0 30px #00ffff", "0 0 10px #00ffff"]
+                  }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="text-7xl md:text-[10rem] font-black text-cyber-blue italic"
+                >
+                  ?
+                </motion.span>
+              ) : (
+                <motion.div
+                  initial={{ rotate: -10 }}
+                  animate={{ rotate: 0 }}
+                  className="relative group"
+                >
+                  <SymbolIcon 
+                    id={symbol} 
+                    className="w-24 h-24 md:w-48 md:h-48 drop-shadow-[0_0_15px_rgba(0,255,255,0.6)]" 
+                  />
+                  {/* Destello sutil al aparecer */}
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+                    transition={{ duration: 0.5 }}
+                    className="absolute inset-0 bg-white rounded-full blur-xl"
+                  />
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Sombras internas para profundidad realista */}
+      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(0,0,0,0.9)] z-30" />
+      <div className="absolute inset-0 border border-white/10 rounded-3xl pointer-events-none z-40" />
+      
+      {/* Divisores de riel (opcional, le da toque mecánico) */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyber-blue/50 to-transparent z-40" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyber-pink/50 to-transparent z-40" />
     </div>
   );
 };
@@ -506,14 +561,15 @@ export default function App() {
       <motion.div
         layout
         animate={result && !reelsSpinning.some(s => s) && !showResultOverlay ? {
-          x: [0, -2, 2, -2, 2, 0],
-          transition: { duration: 0.4 }
+          x: [0, -3, 3, -3, 3, 0],
+          scale: [1, 1.02, 1],
+          transition: { duration: 0.5 }
         } : {}}
-        className="w-full max-w-3xl bg-black/60 backdrop-blur-xl border border-cyber-blue/20 rounded-3xl p-6 md:p-10 shadow-2xl z-10 relative overflow-hidden"
+        className="w-full max-w-5xl bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 md:p-12 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative overflow-hidden"
       >
         {!showResultOverlay ? (
           <div className="space-y-8">
-            <div className="flex justify-center gap-3 md:gap-6">
+            <div className="flex justify-center gap-4 md:gap-10">
               <SlotReel symbol={result ? result.reels[0] : '?'} spinning={reelsSpinning[0]} />
               <SlotReel symbol={result ? result.reels[1] : '?'} spinning={reelsSpinning[1]} />
               <SlotReel symbol={result ? result.reels[2] : '?'} spinning={reelsSpinning[2]} />
