@@ -1,4 +1,4 @@
-// LuckyClub Server v2.5.2 - Blindaje Total RNG
+// LuckyClub Server v2.6.0 - Fix Desbloqueo Manual
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -157,7 +157,7 @@ async function startServer() {
       return res.status(500).json({ error: error.message });
     }
 
-    res.json({ success: true, message: "Has habilitado 3 tiros nuevos para " + whatsapp });
+    res.status(200).json({ success: true, message: "Has habilitado 3 tiros nuevos para " + whatsapp });
   });
 
   app.post("/api/spin", async (req, res) => {

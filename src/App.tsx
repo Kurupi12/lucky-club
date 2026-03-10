@@ -362,8 +362,9 @@ export default function App() {
       if (res.ok) {
         setShowUnlockModal(false);
         setUnlockPin('');
-        fetchUserStatus(whatsapp);
-        alert(data.message || 'Habilitado con éxito');
+        setError(''); // Limpiar errores previos
+        await fetchUserStatus(whatsapp); // Asegurar que termine de cargar
+        setTimeout(() => alert(data.message || 'Habilitado con éxito'), 100);
       } else {
         setError(data.error || 'Error al habilitar');
       }
