@@ -128,7 +128,21 @@ export default function App() {
   const loseAudio = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Inicialización de audio con URLs externas para evitar errores de ruta local
+    // Precarga de imágenes para evitar parpadeos
+    const imageUrls = [
+      "/the_black_sheep.png",
+      "/el_vape_club.png",
+      "/cereza.png",
+      "/limon.png",
+      "/fondo_general.jpg",
+      "/big_win.png"
+    ];
+    imageUrls.forEach(url => {
+      const img = new Image();
+      img.src = url;
+    });
+
+    // Inicialización de audio
     const spin = new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3');
     spin.loop = true;
     spinAudio.current = spin;
@@ -491,6 +505,10 @@ export default function App() {
 
       <motion.div
         layout
+        animate={result && !reelsSpinning.some(s => s) && !showResultOverlay ? {
+          x: [0, -2, 2, -2, 2, 0],
+          transition: { duration: 0.4 }
+        } : {}}
         className="w-full max-w-3xl bg-black/60 backdrop-blur-xl border border-cyber-blue/20 rounded-3xl p-6 md:p-10 shadow-2xl z-10 relative overflow-hidden"
       >
         {!showResultOverlay ? (
@@ -721,6 +739,30 @@ export default function App() {
                 <X className="cursor-pointer" onClick={() => setShowAdmin(false)} />
               </div>
               <div className="space-y-12">
+                {/* Summary Dash */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                    <p className="text-[10px] uppercase text-white/40 mb-1">Total Contactos</p>
+                    <p className="text-2xl font-black text-cyber-blue">{leads.length}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                    <p className="text-[10px] uppercase text-white/40 mb-1">Premios Hoy</p>
+                    <p className="text-2xl font-black text-cyber-pink">
+                      {leads.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length}
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                    <p className="text-[10px] uppercase text-white/40 mb-1">Stock Crítico</p>
+                    <p className="text-2xl font-black text-amber-500">
+                      {prizes.filter(p => p.stock < 5 && p.id !== 4).length}
+                    </p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                    <p className="text-[10px] uppercase text-white/40 mb-1">Versión</p>
+                    <p className="text-2xl font-black text-white/20">2.6</p>
+                  </div>
+                </div>
+
                 {/* General Settings */}
                 <section className="bg-white/5 border border-white/10 rounded-xl p-6 space-y-6">
                   <div className="flex items-center gap-3 text-cyber-blue">
@@ -729,7 +771,7 @@ export default function App() {
                   </div>
                   <form onSubmit={handleUpdateSettings} className="flex flex-col md:flex-row items-end gap-6">
                     <div className="flex-1 space-y-2">
-                      <label className="text-[10px] text-white/40 uppercase font-mono tracking-widest">INTENTOS MÁXIMOS POR USUARIO</label>
+                      <label className="text-[10px] text-white/40 uppercase font-mono tracking-widest">INTENTOS MÁXIMOS BASE (Sin compra)</label>
                       <input
                         type="number"
                         className="w-full bg-black/40 border border-cyber-blue/30 rounded-lg p-3 text-lg font-mono text-cyber-blue outline-none focus:border-cyber-pink transition-colors"
@@ -801,7 +843,7 @@ export default function App() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-[10px] uppercase text-white/40">Stock</p>
-                                  <p className="font-mono text-cyber-pink">{prize.stock}</p>
+                                  <p className={cn("font-mono", prize.stock < 5 && prize.id !== 4 ? "text-red-500 animate-pulse font-bold" : "text-cyber-pink")}>{prize.stock}</p>
                                 </div>
                                 <button
                                   onClick={() => setEditingPrize(prize)}
