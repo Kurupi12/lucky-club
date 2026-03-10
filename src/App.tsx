@@ -118,6 +118,10 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false); // New state
+  const [showUnlockModal, setShowUnlockModal] = useState(false); // New state
+  const [unlockPin, setUnlockPin] = useState(''); // New state
+  const [isUnlocking, setIsUnlocking] = useState(false); // New state
 
   const spinAudio = useRef<HTMLAudioElement | null>(null);
   const winAudio = useRef<HTMLAudioElement | null>(null);
@@ -170,7 +174,7 @@ export default function App() {
 
   useEffect(() => {
     if (whatsapp.length === 13) {
-      fetchUserStatus();
+      fetchUserStatus(whatsapp);
     } else {
       setRemainingAttempts(null);
       setHasWon(false);
@@ -181,15 +185,15 @@ export default function App() {
     }
   }, [whatsapp]);
 
-  const fetchUserStatus = async () => {
-    if (whatsapp.length < 13) return;
+  const fetchUserStatus = async (phone: string) => {
+    if (phone.length < 13) return;
 
     setIsLoadingStatus(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     try {
-      const res = await fetch(`/api/status/${encodeURIComponent(whatsapp)}`, { signal: controller.signal });
+      const res = await fetch(`/api/status?whatsapp=${encodeURIComponent(phone)}`, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
@@ -341,6 +345,34 @@ export default function App() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Contactos");
 
     XLSX.writeFile(workbook, `Contactos_LuckyClub_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!whatsapp || !unlockPin) return;
+
+    setIsUnlocking(true);
+    try {
+      const res = await fetch('/api/admin/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp, pin: unlockPin })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setShowUnlockModal(false);
+        setUnlockPin('');
+        fetchUserStatus(whatsapp);
+        alert(data.message || 'Habilitado con éxito');
+      } else {
+        setError(data.error || 'Error al habilitar');
+      }
+    } catch (err) {
+      console.error('Error unlocking:', err);
+      setError('Error de conexión');
+    } finally {
+      setIsUnlocking(false);
+    }
   };
 
   const handleSpin = async () => {
@@ -544,18 +576,30 @@ export default function App() {
                 )
               )}
 
-              <button
-                onClick={handleSpin}
-                disabled={reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || (remainingAttempts !== null && remainingAttempts <= 0)}
-                className={cn(
-                  "w-full py-6 rounded-xl text-2xl font-black tracking-widest uppercase transition-all relative overflow-hidden",
-                  reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || (remainingAttempts !== null && remainingAttempts <= 0)
-                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                    : "bg-cyber-pink text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]"
+              <div className="relative">
+                <button
+                  onClick={handleSpin}
+                  disabled={reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || (remainingAttempts !== null && remainingAttempts <= 0)}
+                  className={cn(
+                    "w-full py-6 rounded-xl text-2xl font-black tracking-widest uppercase transition-all relative overflow-hidden",
+                    reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || (remainingAttempts !== null && remainingAttempts <= 0)
+                      ? "bg-gray-800 text-gray-500 cursor-not-allowed"
+                      : "bg-cyber-pink text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]"
+                  )}
+                >
+                  {reelsSpinning.some(s => s) ? 'PROCESANDO...' : (isLoadingStatus ? 'VERIFICANDO...' : (remainingAttempts !== null && remainingAttempts <= 0 ? 'SIN INTENTOS' : 'GIRAR AHORA'))}
+                </button>
+                
+                {remainingAttempts !== null && remainingAttempts <= 0 && !reelsSpinning.some(s => s) && (
+                  <button
+                    onClick={() => setShowUnlockModal(true)}
+                    className="absolute -top-3 -right-3 w-10 h-10 bg-cyber-dark border-2 border-cyber-blue rounded-full flex items-center justify-center text-cyber-blue shadow-[0_0_10px_rgba(0,255,255,0.5)] hover:scale-110 transition-transform z-20"
+                    title="Nueva Compra - Habilitar Tiros"
+                  >
+                    <XCircle className="w-6 h-6 rotate-45" />
+                  </button>
                 )}
-              >
-                {reelsSpinning.some(s => s) ? 'PROCESANDO...' : (isLoadingStatus ? 'VERIFICANDO...' : (remainingAttempts !== null && remainingAttempts <= 0 ? 'SIN INTENTOS' : 'GIRAR AHORA'))}
-              </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -835,6 +879,54 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+        {showUnlockModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-cyber-dark/90 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="w-full max-w-sm bg-black/80 border-2 border-cyber-blue rounded-2xl p-6 shadow-[0_0_30px_rgba(0,255,255,0.3)] relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-4">
+                <button onClick={() => setShowUnlockModal(false)} className="text-white/40 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="text-center space-y-4 pt-4">
+                <div className="w-16 h-16 bg-cyber-blue/10 rounded-full flex items-center justify-center mx-auto border border-cyber-blue/50 shadow-[0_0_15px_rgba(0,255,255,0.2)]">
+                  <Zap className="w-8 h-8 text-cyber-blue" />
+                </div>
+                <h3 className="text-xl font-bold text-white uppercase tracking-tighter">Nueva Compra</h3>
+                <p className="text-xs text-cyber-blue/60 font-mono">Habilitar +3 tiros para:<br/><span className="text-white">{whatsapp}</span></p>
+
+                <form onSubmit={handleUnlock} className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="password"
+                      placeholder="PIN CAJERO"
+                      value={unlockPin}
+                      onChange={(e) => setUnlockPin(e.target.value)}
+                      className="w-full bg-white/5 border border-cyber-blue/30 rounded-lg py-3 px-4 text-center text-xl font-mono tracking-[0.5em] focus:border-cyber-blue outline-none text-white"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isUnlocking}
+                    className="w-full py-4 bg-cyber-blue text-black font-black rounded-xl shadow-[0_0_15px_rgba(0,255,255,0.4)] active:scale-95 transition-all text-sm uppercase tracking-widest"
+                  >
+                    {isUnlocking ? 'HABILITANDO...' : 'CONFIRMAR CARGA'}
+                  </button>
+                </form>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

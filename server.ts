@@ -110,21 +110,24 @@ async function startServer() {
   });
 
   // Get user status (Remaining attempts)
-  app.get("/api/status/:whatsapp", async (req, res) => {
-    const { whatsapp } = req.params;
-    
-    const { data: settings } = await supabase.from('settings').select('value').eq('key', 'max_attempts').single();
-    const maxAttempts = parseInt(settings?.value || "3", 10) || 3;
-    
+  app.get("/api/status", async (req, res) => {
+    const { whatsapp } = req.query;
+    if (!whatsapp || typeof whatsapp !== 'string') return res.status(400).json({ error: "WhatsApp requerido" });
+
+    // Intentos base + desbloqueos (cada desbloqueo suma 3)
+    const { count: unlocksCount } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
+    const maxAttempts = 3 + (unlocksCount || 0) * 3;
+
     const { count: attemptsCount } = await supabase.from('leads').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
     const attempts = attemptsCount || 0;
     const remaining = Math.max(0, maxAttempts - attempts);
 
-    // Won prizes 
+    // Ver que premios ya ganó (excluyendo el Limón)
     const { data: wonLeads } = await supabase.from('leads').select('prize_id, prizes!inner(name)').eq('whatsapp', whatsapp).neq('prizes.name', 'Sigue Participando');
     const alreadyWonPrizeIds = wonLeads?.map(l => l.prize_id) || [];
 
-    const { count: realPrizesCount } = await supabase.from('prizes').select('*', { count: 'exact', head: true }).neq('name', 'Sigue Participando');
+    const { data: prizes } = await supabase.from('prizes').select('*');
+    const realPrizesCount = prizes?.filter(p => p.id !== 4 && p.name.trim().toLowerCase() !== "sigue participando").length;
 
     res.json({
       whatsapp,
@@ -132,8 +135,29 @@ async function startServer() {
       max_attempts: maxAttempts,
       remaining: remaining,
       hasWon: alreadyWonPrizeIds.length > 0,
+      alreadyWonIds: alreadyWonPrizeIds,
       allWon: alreadyWonPrizeIds.length >= (realPrizesCount || 0)
     });
+  });
+
+  // Nuevo endpoint para que el cajero habilite más tiros
+  app.post("/api/admin/unlock", async (req, res) => {
+    const { whatsapp, pin } = req.body;
+    const adminPass = process.env.ADMIN_PASSWORD || "1234";
+
+    if (pin !== adminPass) return res.status(401).json({ error: "PIN incorrecto" });
+    if (!whatsapp) return res.status(400).json({ error: "WhatsApp requerido" });
+
+    const { error } = await supabase.from('manual_unlocks').insert({ whatsapp });
+    if (error) {
+      // Si la tabla no existe en este proyecto nuevo, intentamos informar o manejar el error
+      if (error.code === '42P01') {
+        return res.status(500).json({ error: "Error técnico: La tabla 'manual_unlocks' no existe en Supabase. Por favor contacta soporte." });
+      }
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true, message: "Has habilitado 3 tiros nuevos para " + whatsapp });
   });
 
   app.post("/api/spin", async (req, res) => {
@@ -143,8 +167,9 @@ async function startServer() {
       return res.status(400).json({ error: "WhatsApp inválido" });
     }
 
-    const { data: settings } = await supabase.from('settings').select('value').eq('key', 'max_attempts').single();
-    const maxAttempts = parseInt(settings?.value || "3", 10) || 3;
+    // Calcular intentos máximos: 3 base + 3 por cada desbloqueo manual
+    const { count: unlocksCount } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
+    const maxAttempts = 3 + (unlocksCount || 0) * 3;
     
     const { count: attemptsCount } = await supabase.from('leads').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
     const attempts = attemptsCount || 0;
@@ -155,6 +180,7 @@ async function startServer() {
 
     const { data: wonLeads } = await supabase.from('leads').select('prize_id, prizes!inner(name)').eq('whatsapp', whatsapp).neq('prizes.name', 'Sigue Participando');
     const alreadyWonPrizeIds = wonLeads?.map(l => l.prize_id) || [];
+
     // Obtener premios del inventario
     const { data: allPrizes } = await supabase.from('prizes').select('*').order('id');
     if (!allPrizes) return res.status(500).json({ error: "Error leyendo premios" });
@@ -162,43 +188,27 @@ async function startServer() {
     // Función auxiliar para identificar el premio perdedor ("Sigue Participando")
     const isLoser = (p: any) => p.id === 4 || p.name.trim().toLowerCase().includes("sigue participando");
 
-    const filteredPrizes = allPrizes.filter(p => p.stock > 0 && (isLoser(p) || !alreadyWonPrizeIds.includes(p.id)));
+    // FILTRO IMPORTANTE: El pool de sorteo incluye los ya ganados para no alterar probabilidades, 
+    // pero solo los que tengan stock.
+    const filteredPrizes = allPrizes.filter(p => p.stock > 0);
     
-    let selectedPrize: any | null = null; // Changed Prize to any for type compatibility
+    let selectedPrize: any | null = null;
+    let silentConversion = false;
 
     // LÓGICA DE NEGOCIO:
     if (filteredPrizes.length > 0) {
-      // Si es el tiro 1 o 2, forzamos "Sigue Participando" para crear tensión
-      if (attempts < maxAttempts - 1) {
+      // Tiro 1 o 2 de CADA BLOQUE de 3
+      const attemptsInThisBlock = attempts % 3;
+      if (attemptsInThisBlock < 2) {
         const continuePrize = filteredPrizes.find(isLoser);
         if (continuePrize) {
           selectedPrize = continuePrize;
         }
       }
       
-      // Si no se forzó perdedor (o no se encontró), usamos el RNG
+      // Si toca ganar (tiro 3) o no se forzó perdedor: RNG sobre el pool Total (con stock)
       if (!selectedPrize) {
-        if (attempts >= maxAttempts - 1) {
-          // SI ES EL ÚLTIMO TIRO:
-          // Si el cliente NO ha ganado nada aún, priorizamos que gane algo real
-          const realPrizes = filteredPrizes.filter(p => !isLoser(p));
-          
-          if (alreadyWonPrizeIds.length === 0 && realPrizes.length > 0) {
-            let realTotalProb = realPrizes.reduce((sum, p) => sum + p.probability, 0);
-            let random = Math.random() * realTotalProb;
-            for (const prize of realPrizes) {
-              random -= prize.probability;
-              if (random <= 0) {
-                selectedPrize = prize;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      // Si aún no hay premio (tiro normal o no se forzó victoria)
-      if (!selectedPrize) {
+        // SORTEO SOBRE EL 100% PARA PROTEGER EL PREMIO MAYOR
         let totalProb = filteredPrizes.reduce((sum, p) => sum + p.probability, 0);
         let random = Math.random() * totalProb;
         for (const prize of filteredPrizes) {
@@ -208,6 +218,13 @@ async function startServer() {
             break;
           }
         }
+
+        // Si es el tiro 3 y tocó el Limón, pero el cliente NO ha ganado nada en sus tiros actuales, 
+        // podríamos forzar victoria si quisieras, pero según tu regla mantendremos el RNG.
+        // REGLA DE EXCLUSIÓN: Si el premio ya lo tiene, se convierte en pérdida silenciosa.
+        if (selectedPrize && !isLoser(selectedPrize) && alreadyWonPrizeIds.includes(selectedPrize.id)) {
+          silentConversion = true;
+        }
       }
     }
 
@@ -215,39 +232,50 @@ async function startServer() {
       return res.status(500).json({ error: "No hay premios disponibles" });
     }
 
-    // Guardamos el lead en Supabase
-    await supabase.from('leads').insert({ whatsapp, prize_id: selectedPrize.id });
+    // Si hubo conversión silenciosa, para la base de datos es un "Sigue Participando"
+    const finalPrizeToRecord = silentConversion ? allPrizes.find(isLoser) || selectedPrize : selectedPrize;
 
-    // Definimos si el premio es un "perdedor" de forma robusta
-    const isLoserPrize = isLoser(selectedPrize);
+    // Guardamos el lead en Supabase
+    await supabase.from('leads').insert({ whatsapp, prize_id: finalPrizeToRecord.id });
+
+    // Definimos si el premio es un "perdedor" para el frontend
+    const isLoserPrize = silentConversion || isLoser(selectedPrize);
 
     // Calculamos los símbolos de la ruleta
     let reelSymbols: number[];
     if (isLoserPrize) {
       // Si pierde, mostramos dos íconos iguales (bait) y el tercero diferente (ruin)
-      const realPrizes = allPrizes.map(p => p.id).filter(id => id !== selectedPrize.id && id !== 4);
-      const baitPrizeId = realPrizes[Math.floor(Math.random() * realPrizes.length)] || allPrizes[0].id;
+      const possibleIds = allPrizes.map(p => p.id);
       
-      // La tercera ficha SIEMPRE será el limón (ID 4) para romper la fila
-      const ruinPrizeId = 4; 
+      // Usamos el premio que salió en el sorteo (aunque ya lo tenga) como "bait" para crear tensión
+      const baitPrizeId = selectedPrize.id;
+      
+      // La tercera ficha será CUALQUIERA diferente para romper la fila (no solo limón)
+      let ruinPrizeId = possibleIds[Math.floor(Math.random() * possibleIds.length)];
+      if (ruinPrizeId === baitPrizeId) {
+        // Forzar uno diferente si coinciden
+        const otherPrizes = possibleIds.filter(id => id !== baitPrizeId);
+        ruinPrizeId = otherPrizes[Math.floor(Math.random() * otherPrizes.length)] || (baitPrizeId === 4 ? 1 : 4);
+      }
+      
       reelSymbols = [baitPrizeId, baitPrizeId, ruinPrizeId];
     } else {
-      // Si gana, los tres iguales
+      // Si gana de verdad
       reelSymbols = [selectedPrize.id, selectedPrize.id, selectedPrize.id];
     }
 
-    // Actualizar stock si es un premio real
+    // Actualizar stock si es un premio real y ganó de verdad
     if (!isLoserPrize) {
       await supabase.from('prizes').update({ stock: selectedPrize.stock - 1 }).eq('id', selectedPrize.id);
     }
 
     res.json({
-      prize: selectedPrize,
+      prize: finalPrizeToRecord, // Enviamos el premio real o el "Sigue Participando" si fue bloqueado
       reels: reelSymbols,
       remaining: Math.max(0, maxAttempts - (attempts + 1)),
       isWin: !isLoserPrize,
       hasWon: !isLoserPrize || alreadyWonPrizeIds.length > 0,
-      allWon: (alreadyWonPrizeIds.length + (!isLoserPrize ? 1 : 0)) >= (allPrizes.length - 1)
+      allWon: (alreadyWonPrizeIds.length + (!isLoserPrize ? 1 : 0)) >= (allPrizes.filter(p => !isLoser(p)).length)
     });
   });
 
