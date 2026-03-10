@@ -756,7 +756,7 @@ export default function App() {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
                     <p className="text-[10px] uppercase text-white/40 mb-1">Stock Crítico</p>
                     <p className="text-2xl font-black text-amber-500">
-                      {prizes.filter(p => p.stock < 5 && p.id !== 4).length}
+                      {prizes.filter(p => p.stock <= 1 && p.id !== 4).length}
                     </p>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
@@ -845,7 +845,7 @@ export default function App() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-[10px] uppercase text-white/40">Stock</p>
-                                  <p className={cn("font-mono", prize.stock < 5 && prize.id !== 4 ? "text-red-500 animate-pulse font-bold" : "text-cyber-pink")}>{prize.stock}</p>
+                                  <p className={cn("font-mono", prize.stock <= 1 && prize.id !== 4 ? "text-red-500 animate-pulse font-bold" : "text-cyber-pink")}>{prize.stock}</p>
                                 </div>
                                 <button
                                   onClick={() => setEditingPrize(prize)}
