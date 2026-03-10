@@ -743,7 +743,9 @@ export default function App() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
                     <p className="text-[10px] uppercase text-white/40 mb-1">Total Contactos</p>
-                    <p className="text-2xl font-black text-cyber-blue">{leads.length}</p>
+                    <p className="text-2xl font-black text-cyber-blue">
+                      {new Set(leads.map(l => l.whatsapp)).size}
+                    </p>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
                     <p className="text-[10px] uppercase text-white/40 mb-1">Premios Hoy</p>

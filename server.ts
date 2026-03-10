@@ -1,4 +1,4 @@
-// LuckyClub Server v2.6.5 - UI Polish: Removed browser alert
+// LuckyClub Server v2.6.7 - Admin Metric Fix: Unique Contacts Count
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
