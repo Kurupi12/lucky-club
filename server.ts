@@ -1,4 +1,4 @@
-// LuckyClub Server v2.6.2 - PIN UX Fix & Auto-Submit
+// LuckyClub Server v2.6.3 - Bypass 401 Proxy issues
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -145,9 +145,12 @@ async function startServer() {
     const { whatsapp, pin } = req.body;
     const adminPass = process.env.ADMIN_PASSWORD || "1234";
 
-    console.log(`[UNLOCK REQUEST] Phone: ${whatsapp}, PIN: ${pin}`);
-    if (pin !== adminPass) return res.status(401).json({ error: "PIN incorrecto" });
-    if (!whatsapp) return res.status(400).json({ error: "WhatsApp requerido" });
+    console.log(`[UNLOCK] Intento para: ${whatsapp}, PIN recibido: ${pin}`);
+    if (pin !== adminPass) {
+      console.log(`[UNLOCK] PIN Incorrecto. Esperado: ${adminPass}`);
+      return res.status(200).json({ success: false, error: "El PIN de cajero es incorrecto." });
+    }
+    if (!whatsapp) return res.status(200).json({ success: false, error: "WhatsApp requerido" });
 
     const { error } = await supabase.from('manual_unlocks').insert({ whatsapp });
     if (error) {

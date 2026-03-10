@@ -372,15 +372,16 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ whatsapp, pin: unlockPin })
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await res.json().catch(() => ({ error: 'Respuesta inválida del servidor' }));
+      
+      if (res.ok && data.success) {
         setShowUnlockModal(false);
         setUnlockPin('');
-        setError(''); // Limpiar errores previos
-        await fetchUserStatus(whatsapp); // Asegurar que termine de cargar
+        setError('');
+        await fetchUserStatus(whatsapp);
         setTimeout(() => alert(data.message || 'Habilitado con éxito'), 100);
       } else {
-        setError(data.error || 'Error al habilitar');
+        setError(data.error || 'Error de autorización (PIN incorrecto)');
       }
     } catch (err) {
       console.error('Error unlocking:', err);
