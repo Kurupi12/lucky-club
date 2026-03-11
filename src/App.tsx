@@ -58,7 +58,7 @@ const SlotReel = ({ symbol, spinning }: { symbol: string | number; spinning: boo
     <div className={cn(
       "w-28 h-44 md:w-56 md:h-80 bg-gradient-to-b from-black/80 to-black/40 border-2 rounded-3xl flex items-center justify-center overflow-hidden relative transition-all duration-700",
       spinning 
-        ? "border-cyber-pink shadow-[0_0_40px_rgba(255,0,255,0.5)] scale-105" 
+        ? "border-cyber-pink shadow-[0_0_40px_rgba(255,0,255,0.5)]" 
         : "border-cyber-blue/30 shadow-[0_0_20px_rgba(0,255,255,0.15)]"
     )}>
       {/* Capas estéticas de fondo */}
@@ -560,11 +560,7 @@ export default function App() {
 
       <motion.div
         layout
-        animate={result && !reelsSpinning.some(s => s) && !showResultOverlay ? {
-          x: [0, -3, 3, -3, 3, 0],
-          scale: [1, 1.02, 1],
-          transition: { duration: 0.5 }
-        } : {}}
+        animate={{}}
         className="w-full max-w-5xl bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 md:p-12 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative overflow-hidden"
       >
         {!showResultOverlay ? (

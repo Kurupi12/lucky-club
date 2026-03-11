@@ -1,4 +1,4 @@
-// LuckyClub Server v2.7.0 - Premium Visuals: Expanded & Enhanced Reels
+// LuckyClub Server v2.7.1 - Animation Cleanup: Removed shake and scale effects
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
