@@ -808,7 +808,7 @@ export default function App() {
                     <p className="text-2xl font-black text-cyber-pink">
                       {leads.filter(l => 
                         new Date(l.created_at).toDateString() === new Date().toDateString() && 
-                        l.prize_name !== 'Sigue Participando'
+                        l.prize_name.trim().toLowerCase() !== 'sigue participando'
                       ).length}
                     </p>
                   </div>
