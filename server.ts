@@ -269,6 +269,7 @@ async function startServer() {
     res.json({
       prize: finalPrizeToRecord, // Enviamos el premio real o el "Sigue Participando" si fue bloqueado
       reels: reelSymbols,
+      attempts: attempts + 1,
       remaining: Math.max(0, maxAttempts - (attempts + 1)),
       isWin: !isLoserPrize,
       hasWon: !isLoserPrize || alreadyWonPrizeIds.length > 0,

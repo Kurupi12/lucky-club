@@ -162,6 +162,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [editingPrize, setEditingPrize] = useState<Prize | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [attemptsCount, setAttemptsCount] = useState<number>(0);
   const [maxAttempts, setMaxAttempts] = useState<number>(3);
   const [hasWon, setHasWon] = useState<boolean>(false);
   const [allWon, setAllWon] = useState<boolean>(false);
@@ -250,6 +251,7 @@ export default function App() {
       setAllWon(false);
       setResult(null);
       setShowResultOverlay(false);
+      setAttemptsCount(0);
       setError('');
     }
   }, [whatsapp]);
@@ -267,6 +269,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setRemainingAttempts(typeof data.remaining === 'number' ? data.remaining : Number(data.remaining));
+        setAttemptsCount(typeof data.attempts === 'number' ? data.attempts : Number(data.attempts));
         setMaxAttempts(typeof data.max_attempts === 'number' ? data.max_attempts : Number(data.max_attempts));
         setHasWon(!!data.hasWon);
         setAllWon(!!data.allWon);
@@ -491,6 +494,7 @@ export default function App() {
       setTimeout(() => {
         setReelsSpinning(prev => [prev[0], prev[1], false]);
         setRemainingAttempts(data.remaining);
+        setAttemptsCount(data.attempts);
         setHasWon(data.hasWon);
         setAllWon(data.allWon);
 
@@ -617,17 +621,17 @@ export default function App() {
                 </div>
               ) : remainingAttempts !== null ? (
                 <div className="flex justify-center gap-2">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "w-3 h-3 rounded-full border border-cyber-blue/50",
-                        i < Math.min(3, remainingAttempts) ? "bg-cyber-blue shadow-[0_0_8px_rgba(0,255,255,0.6)]" : "bg-transparent"
-                      )}
-                    />
-                  ))}
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-3 h-3 rounded-full border border-cyber-blue/50",
+                          remainingAttempts !== null && remainingAttempts > 0 && i < (3 - (attemptsCount % 3)) ? "bg-cyber-blue shadow-[0_0_8px_rgba(0,255,255,0.6)]" : "bg-transparent"
+                        )}
+                      />
+                    ))}
                   <span className="ml-2 text-[10px] text-cyber-blue/60 font-mono uppercase tracking-tighter">
-                    {allWon ? '¡Ya ganaste todo!' : (hasWon ? '¡Ya ganaste! Sigue por más' : (remainingAttempts > 0 ? `${remainingAttempts} ${remainingAttempts === 1 ? 'intento' : 'intentos'}` : 'Sin intentos'))}
+                    {remainingAttempts !== null && remainingAttempts > 0 ? `${3 - (attemptsCount % 3)} ${(3 - (attemptsCount % 3)) === 1 ? 'intento' : 'intentos'}` : (allWon ? '¡Ya ganaste todo!' : (hasWon ? '¡Ya ganaste! Sigue por más' : 'Sin intentos'))}
                   </span>
                 </div>
               ) : (
@@ -691,7 +695,7 @@ export default function App() {
                     }}
                     className="w-full py-3 bg-cyber-blue text-black font-black rounded-xl"
                   >
-                    {remainingAttempts !== null && remainingAttempts > 0 ? `Intentar de nuevo (${remainingAttempts})` : 'Intentar de nuevo'}
+                    {remainingAttempts !== null && remainingAttempts > 0 ? `Intentar de nuevo (${3 - (attemptsCount % 3)})` : 'Intentar de nuevo'}
                   </button>
                 </>
               ) : (
@@ -802,7 +806,10 @@ export default function App() {
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
                     <p className="text-[10px] uppercase text-white/40 mb-1">Premios Hoy</p>
                     <p className="text-2xl font-black text-cyber-pink">
-                      {leads.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length}
+                      {leads.filter(l => 
+                        new Date(l.created_at).toDateString() === new Date().toDateString() && 
+                        l.prize_name !== 'Sigue Participando'
+                      ).length}
                     </p>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
