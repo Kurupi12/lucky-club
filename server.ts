@@ -258,23 +258,25 @@ async function startServer() {
         }
       }
 
-      // Prioridad 3: Siguiente Premio Disponible (Por Porcentaje)
+      // Prioridad 3: Siguiente Premio Disponible (Probabilidad Absoluta sobre 100%)
       if (!forcedPrize) {
-        if (availableRealPrizes.length > 0) {
-          const totalProbP3 = availableRealPrizes.reduce((sum, p) => sum + p.probability, 0);
-          let randomRollP3 = Math.random() * totalProbP3;
-          
-          for (const p of availableRealPrizes) {
-            randomRollP3 -= p.probability;
-            if (randomRollP3 <= 0) {
+        let randomRollP3 = Math.random() * 100;
+        let cumulative = 0;
+        
+        // Iteramos sobre TODOS los premios originales (incluido perdedor) para mantener los verdaderos pesos matemáticos sin inflarlos.
+        for (const p of allPrizes) {
+          cumulative += p.probability;
+          if (randomRollP3 <= cumulative) {
+            // Si el premio sorteado es un premio válido, tiene stock y NO ha sido ganado:
+            if (!isLoser(p) && p.stock > 0 && !alreadyWonPrizeIds.includes(p.id)) {
               forcedPrize = p;
-              break;
+              console.log(`[P3 ABSOLUTA] Premio ${p.name} ganado con prob ${p.probability}% (Roll: ${randomRollP3.toFixed(2)}) para ${whatsapp}`);
+            } else {
+              // Si el % cayó en un premio agotado, ganado anteriormente o directamente el "Sigue Participando", es un slot vacío.
+              console.log(`[P3 VACÍO] Roll ${randomRollP3.toFixed(2)} cayó en ${p.name} (agotado/ganado/perdedor). Cae a fallback para ${whatsapp}.`);
             }
+            break; // Ocupó su porción de probabilidad exacta, haya o no ganado el ítem.
           }
-          // Fallback de seguridad matemático
-          if (!forcedPrize) forcedPrize = availableRealPrizes[0];
-          
-          console.log(`[P3 RESTANTE PROBABILIDAD] Premio ${forcedPrize.name} asignado en tiro 3 para ${whatsapp}`);
         }
       }
 

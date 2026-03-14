@@ -308,11 +308,21 @@ export default function App() {
       clearTimeout(timeoutId);
       if (res.ok) {
         const data = await res.json();
-        setRemainingAttempts(typeof data.remaining === 'number' ? data.remaining : Number(data.remaining));
-        setAttemptsCount(typeof data.attempts === 'number' ? data.attempts : Number(data.attempts));
-        setMaxAttempts(typeof data.max_attempts === 'number' ? data.max_attempts : Number(data.max_attempts));
+        const remAttempts = typeof data.remaining === 'number' ? data.remaining : Number(data.remaining);
+        const fetchedAttempts = typeof data.attempts === 'number' ? data.attempts : Number(data.attempts);
+        const maxAtt = typeof data.max_attempts === 'number' ? data.max_attempts : Number(data.max_attempts);
+        
+        setRemainingAttempts(remAttempts);
+        setAttemptsCount(fetchedAttempts);
+        setMaxAttempts(maxAtt);
         setHasWon(!!data.hasWon);
         setAllWon(!!data.allWon);
+
+        // Bloqueo en Pantalla Principal: Rechazo inmediato
+        if (fetchedAttempts >= maxAtt && fetchedAttempts > 0) {
+          setError('Este número ya jugó');
+        }
+
       } else {
         setRemainingAttempts(0);
       }
@@ -459,6 +469,26 @@ export default function App() {
     XLSX.writeFile(workbook, `Contactos_LuckyClub_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const handleAdminUnlockLead = async (phone: string) => {
+    if (!window.confirm(`¿Habilitar 3 tiros nuevos para ${phone}?`)) return;
+    try {
+      const res = await fetch('/api/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ whatsapp: phone, pin: adminPassword })
+      });
+      if (res.ok) {
+        alert(`Sesión habilitada permitiendo 3 tiros nuevos para ${phone}.`);
+        fetchAdminData();
+      } else {
+        const data = await res.json();
+        alert('Error: ' + (data.error || 'Error de autorización'));
+      }
+    } catch(err) {
+      alert('Error de conexión');
+    }
+  };
+
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!whatsapp || !unlockPin) return;
@@ -493,6 +523,11 @@ export default function App() {
       setError('Por favor ingresa un WhatsApp válido (13 caracteres)');
       return;
     }
+    if (attemptsCount >= maxAttempts && attemptsCount > 0) {
+      setError('Este número ya jugó');
+      return;
+    }
+
     setError('');
     setResult(null);
     setShowResultOverlay(false);
@@ -1036,7 +1071,15 @@ export default function App() {
                             <tr key={lead.id} className="hover:bg-white/5 transition-colors group">
                               <td className="p-3 md:p-4 font-mono text-cyber-blue text-xs whitespace-nowrap">{lead.whatsapp}</td>
                               <td className="p-3 md:p-4 text-xs">{lead.prize_name}</td>
-                              <td className="p-3 md:p-4 text-right">
+                              <td className="p-3 md:p-4 text-right flex justify-end gap-2">
+                                <button
+                                  onClick={() => handleAdminUnlockLead(lead.whatsapp)}
+                                  className="p-2 transition-all duration-200 rounded-lg text-cyber-blue/40 hover:text-cyber-blue hover:bg-cyber-blue/10 flex items-center gap-1"
+                                  title="Habilitar 3 tiros"
+                                >
+                                  <Zap className="w-4 h-4" />
+                                  <span className="text-[10px] uppercase font-bold hidden md:inline">Habilitar</span>
+                                </button>
                                 <button
                                   onClick={() => handleDeleteLead(lead.id)}
                                   className={`p-2 transition-all duration-200 rounded-lg flex items-center gap-2 ${deletingId === lead.id ? 'bg-red-600 text-white px-3' : 'text-red-500/40 hover:text-red-500 hover:bg-red-500/10'}`}
@@ -1047,6 +1090,7 @@ export default function App() {
                                     <Trash2 className="w-4 h-4" />
                                   )}
                                 </button>
+                                
                               </td>
                             </tr>
                           ))}
