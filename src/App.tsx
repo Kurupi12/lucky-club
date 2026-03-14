@@ -547,8 +547,8 @@ export default function App() {
         setHasWon(data.hasWon);
         setAllWon(data.allWon);
 
-        // Si se agotaron los intentos, marcar la sesión como finalizada
-        if (data.remaining <= 0) {
+        // Si es el 3er intento de un bloque, marcar la sesión como finalizada
+        if (data.attempts % 3 === 0) {
           setSessionFinished(true);
         }
 
@@ -711,18 +711,18 @@ export default function App() {
               <div className="relative">
                 <button
                   onClick={handleSpin}
-                  disabled={reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || (remainingAttempts !== null && remainingAttempts <= 0)}
+                  disabled={reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || sessionFinished}
                   className={cn(
                     "w-full py-6 rounded-xl text-2xl font-black tracking-widest uppercase transition-all relative overflow-hidden",
-                    reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || (remainingAttempts !== null && remainingAttempts <= 0)
+                    reelsSpinning.some(s => s) || isLoadingStatus || !whatsapp || whatsapp.length < 13 || !!result || sessionFinished
                       ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                      : "bg-cyber-pink text-white shadow-[0_0_20px_rgba(255,0,255,0.4)]"
+                      : "bg-cyber-pink text-white shadow-[0_0_20px_rgba(255,0,255,0.4)] hover:shadow-[0_0_30px_rgba(255,0,255,0.6)] hover:scale-[1.02] active:scale-[0.98]"
                   )}
                 >
-                  {reelsSpinning.some(s => s) ? 'PROCESANDO...' : (isLoadingStatus ? 'VERIFICANDO...' : (remainingAttempts !== null && remainingAttempts <= 0 ? 'SIN INTENTOS' : 'GIRAR AHORA'))}
+                  {reelsSpinning.some(s => s) ? 'PROCESANDO...' : (isLoadingStatus ? 'VERIFICANDO...' : (sessionFinished ? 'SESIÓN FINALIZADA' : 'GIRAR AHORA'))}
                 </button>
                 
-                {remainingAttempts !== null && remainingAttempts <= 0 && !reelsSpinning.some(s => s) && (
+                {sessionFinished && !reelsSpinning.some(s => s) && (
                   <button
                     onClick={() => setShowUnlockModal(true)}
                     className="absolute -top-3 -right-3 w-10 h-10 bg-cyber-dark border-2 border-cyber-blue rounded-full flex items-center justify-center text-cyber-blue shadow-[0_0_10px_rgba(0,255,255,0.5)] hover:scale-110 transition-transform z-20"
@@ -747,44 +747,30 @@ export default function App() {
           >
             <div className="bg-cyber-dark/95 backdrop-blur-xl rounded-[calc(1.5rem-1px)] p-8 text-center space-y-4">
 
-              {/* ---- CASO 1: Sesión terminada sin premio ---- */}
-              {sessionFinished && !result?.isWin ? (
-                <>
-                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
-                    <Star className="w-8 h-8 text-white/30" />
-                  </div>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-widest">Gracias por<br/>participar</h2>
-                  <p className="text-[11px] text-cyber-blue/60 font-mono">
-                    Has usado todos tus intentos.<br/>
-                    ¡Vuelve pronto con una nueva compra!
-                  </p>
-                  <div className="w-full h-px bg-white/10" />
-                  <button
-                    onClick={handleManualReset}
-                    className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl uppercase tracking-widest transition-all text-sm"
-                  >
-                    Cerrar
-                  </button>
-                </>
-
-              ) : !result?.isWin ? (
-                /* ---- CASO 2: Perdió pero quedan intentos ---- */
+              {!result?.isWin ? (
                 <>
                   <RefreshCw className="w-12 h-12 text-gray-400 mx-auto" />
                   <h2 className="text-2xl font-bold text-white">¡Casi lo logras!</h2>
-                  <button
-                    onClick={() => {
-                      setResult(null);
-                      setShowResultOverlay(false);
-                    }}
-                    className="w-full py-3 bg-cyber-blue text-black font-black rounded-xl"
-                  >
-                    {remainingAttempts !== null && remainingAttempts > 0
-                      ? `Intentar de nuevo (${remainingAttempts})`
-                      : 'Intentar de nuevo'}
-                  </button>
+                  
+                  {sessionFinished ? (
+                    <button
+                      onClick={handleManualReset}
+                      className="w-full py-3 bg-cyber-pink text-white font-black rounded-xl hover:bg-cyber-pink/80 transition-colors uppercase tracking-widest text-sm"
+                    >
+                      Finalizar sesión
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setResult(null);
+                        setShowResultOverlay(false);
+                      }}
+                      className="w-full py-3 bg-cyber-blue text-black font-black rounded-xl"
+                    >
+                      Intentar de nuevo
+                    </button>
+                  )}
                 </>
-
               ) : (
                 /* ---- CASO 3: GANADOR ---- */
                 <>
