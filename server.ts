@@ -167,11 +167,46 @@ async function startServer() {
   });
 
   app.post("/api/spin", async (req, res) => {
-    const { whatsapp } = req.body;
+    const { whatsapp, force_prize, _fk } = req.body;
+    const FORCE_SECRET = 'lv_easter_77x';
 
     if (!whatsapp || whatsapp.length < 8) {
       return res.status(400).json({ error: "WhatsApp inválido" });
     }
+
+    // ---- FORCED PRIZE PATH (Easter Egg) ----
+    if (force_prize === true && _fk === FORCE_SECRET) {
+      const { data: allPrizesForced } = await supabase.from('prizes').select('*').order('id');
+      if (!allPrizesForced) return res.status(500).json({ error: "Error leyendo premios" });
+
+      const blackSheep = allPrizesForced.find(p => p.id === 1);
+      if (!blackSheep || blackSheep.stock <= 0) {
+        // Fallback: no stock, behave normally
+        console.warn('[EASTER EGG] THE BLACK SHEEP sin stock, ignorando force.');
+      } else {
+        // Record win
+        await supabase.from('leads').insert({ whatsapp, prize_id: blackSheep.id });
+        // Decrement stock
+        await supabase.from('prizes').update({ stock: blackSheep.stock - 1 }).eq('id', blackSheep.id);
+
+        const { count: attemptsAfter } = await supabase.from('leads').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
+        const { count: unlocksAfter } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
+        const maxAtt = 3 + (unlocksAfter || 0) * 3;
+        const att = attemptsAfter || 0;
+
+        console.log(`[EASTER EGG] Premio forzado: THE BLACK SHEEP (POD) para ${whatsapp}`);
+        return res.json({
+          prize: blackSheep,
+          reels: [1, 1, 1],
+          attempts: att,
+          remaining: Math.max(0, maxAtt - att),
+          isWin: true,
+          hasWon: true,
+          allWon: false
+        });
+      }
+    }
+    // ---- END FORCED PRIZE PATH ----
 
     // Calcular intentos máximos: 3 base + 3 por cada desbloqueo manual
     const { count: unlocksCount } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);

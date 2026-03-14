@@ -179,6 +179,27 @@ export default function App() {
   const [unlockPin, setUnlockPin] = useState(''); // New state
   const [isUnlocking, setIsUnlocking] = useState(false); // New state
 
+  // --- Hidden Prize Force Easter Egg ---
+  const isPrizeForced = useRef(false);
+  const tapTimestamps = useRef<number[]>([]);
+  const [logoFlash, setLogoFlash] = useState(false);
+
+  const handleLogoTap = () => {
+    const now = Date.now();
+    // Keep only taps within the last 500ms
+    tapTimestamps.current = tapTimestamps.current.filter(t => now - t < 500);
+    tapTimestamps.current.push(now);
+
+    if (tapTimestamps.current.length >= 3) {
+      tapTimestamps.current = [];
+      isPrizeForced.current = true;
+      // Trigger flash animation as confirmation
+      setLogoFlash(true);
+      setTimeout(() => setLogoFlash(false), 600);
+    }
+  };
+  // --- End Easter Egg ---
+
   const spinAudio = useRef<HTMLAudioElement | null>(null);
   const winAudio = useRef<HTMLAudioElement | null>(null);
   const loseAudio = useRef<HTMLAudioElement | null>(null);
@@ -458,6 +479,10 @@ export default function App() {
     setShowResultOverlay(false);
     setReelsSpinning([true, true, true]);
 
+    // Capture and immediately reset the forced prize flag
+    const forcingPrize = isPrizeForced.current;
+    if (forcingPrize) isPrizeForced.current = false;
+
     if (spinAudio.current) {
       spinAudio.current.currentTime = 0;
       spinAudio.current.play().catch(e => console.log("Audio play blocked:", e));
@@ -470,7 +495,10 @@ export default function App() {
       const res = await fetch('/api/spin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ whatsapp }),
+        body: JSON.stringify({
+          whatsapp,
+          ...(forcingPrize && { force_prize: true, _fk: 'lv_easter_77x' })
+        }),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -554,8 +582,14 @@ export default function App() {
         animate={{ y: 0, opacity: 1 }}
         className="text-center mb-8 z-10"
       >
-        <h1 className="text-3xl md:text-5xl font-display font-black tracking-tighter italic neon-text mb-2">
-          LUCKY<span className="text-cyber-blue">CLUB</span>
+        <h1
+          onClick={handleLogoTap}
+          className={`text-3xl md:text-5xl font-display font-black tracking-tighter italic neon-text mb-2 select-none cursor-default transition-all duration-75 ${
+            logoFlash ? 'text-white drop-shadow-[0_0_30px_rgba(255,255,255,1)] opacity-100 scale-105' : ''
+          }`}
+          style={logoFlash ? { filter: 'brightness(4) saturate(0)' } : {}}
+        >
+          LUCKY<span className={logoFlash ? 'text-white' : 'text-cyber-blue'}>VAPE</span>
         </h1>
         <p className="text-cyber-blue/60 font-mono text-[10px] tracking-widest uppercase">
           Gana recompensas
