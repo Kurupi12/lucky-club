@@ -181,8 +181,31 @@ export default function App() {
 
   // --- Hidden Prize Force Easter Egg ---
   const isPrizeForced = useRef(false);
+  const forcedWinSession = useRef(false); // true mientras el Easter Egg está activo en una ronda
   const tapTimestamps = useRef<number[]>([]);
   const [logoFlash, setLogoFlash] = useState(false);
+  const [autoResetCountdown, setAutoResetCountdown] = useState<number | null>(null);
+
+  // Countdown ticker para auto-reset
+  useEffect(() => {
+    if (autoResetCountdown === null) return;
+    if (autoResetCountdown <= 0) {
+      // Reset completo para el siguiente cliente
+      setResult(null);
+      setShowResultOverlay(false);
+      setWhatsapp('+595');
+      setHasWon(false);
+      setAllWon(false);
+      setRemainingAttempts(null);
+      setAttemptsCount(0);
+      setError('');
+      forcedWinSession.current = false;
+      setAutoResetCountdown(null);
+      return;
+    }
+    const timer = setTimeout(() => setAutoResetCountdown(prev => prev !== null ? prev - 1 : null), 1000);
+    return () => clearTimeout(timer);
+  }, [autoResetCountdown]);
 
   const handleLogoTap = () => {
     const now = Date.now();
@@ -479,9 +502,11 @@ export default function App() {
     setShowResultOverlay(false);
     setReelsSpinning([true, true, true]);
 
-    // Capture and immediately reset the forced prize flag
+    // Tomar el estado del Easter Egg SIN resetearlo — persiste durante los 3 tiros
     const forcingPrize = isPrizeForced.current;
-    if (forcingPrize) isPrizeForced.current = false;
+    if (forcingPrize && !forcedWinSession.current) {
+      forcedWinSession.current = true; // marca que estamos en una ronda forzada
+    }
 
     if (spinAudio.current) {
       spinAudio.current.currentTime = 0;
@@ -534,6 +559,12 @@ export default function App() {
           setShowResultOverlay(true);
           if (data.isWin) {
             setHasWon(true);
+            // Si ganamos Y estamos en sesión forzada, resetear el flag y arrancar countdown
+            if (forcedWinSession.current) {
+              isPrizeForced.current = false;
+              forcedWinSession.current = false;
+              setAutoResetCountdown(12); // 12 segundos para ver el QR y reclamar
+            }
             if (winAudio.current) {
               winAudio.current.currentTime = 0;
               winAudio.current.play().catch(e => console.log("Win audio play blocked:", e));
@@ -749,7 +780,37 @@ export default function App() {
                       </p>
                     </div>
                   </div>
-                  <button onClick={() => { setResult(null); setShowResultOverlay(false); setWhatsapp('+595'); setHasWon(false); setAllWon(false); }} className="text-cyber-blue/40 text-[10px]">
+
+                  {/* Auto-reset countdown (solo visible en sesión Easter Egg) */}
+                  {autoResetCountdown !== null && (
+                    <div className="space-y-2 pt-1">
+                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-cyber-pink rounded-full"
+                          initial={{ width: '100%' }}
+                          animate={{ width: `${(autoResetCountdown / 12) * 100}%` }}
+                          transition={{ duration: 1, ease: 'linear' }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-white/30 font-mono tracking-widest uppercase">
+                        Próximo cliente en {autoResetCountdown}s
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setAutoResetCountdown(null);
+                      forcedWinSession.current = false;
+                      isPrizeForced.current = false;
+                      setResult(null);
+                      setShowResultOverlay(false);
+                      setWhatsapp('+595');
+                      setHasWon(false);
+                      setAllWon(false);
+                    }}
+                    className="text-cyber-blue/40 text-[10px] hover:text-cyber-blue/60 transition-colors"
+                  >
                     Finalizar sesión
                   </button>
                 </>

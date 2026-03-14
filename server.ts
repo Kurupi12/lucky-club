@@ -174,39 +174,9 @@ async function startServer() {
       return res.status(400).json({ error: "WhatsApp inválido" });
     }
 
-    // ---- FORCED PRIZE PATH (Easter Egg) ----
-    if (force_prize === true && _fk === FORCE_SECRET) {
-      const { data: allPrizesForced } = await supabase.from('prizes').select('*').order('id');
-      if (!allPrizesForced) return res.status(500).json({ error: "Error leyendo premios" });
-
-      const blackSheep = allPrizesForced.find(p => p.id === 1);
-      if (!blackSheep || blackSheep.stock <= 0) {
-        // Fallback: no stock, behave normally
-        console.warn('[EASTER EGG] THE BLACK SHEEP sin stock, ignorando force.');
-      } else {
-        // Record win
-        await supabase.from('leads').insert({ whatsapp, prize_id: blackSheep.id });
-        // Decrement stock
-        await supabase.from('prizes').update({ stock: blackSheep.stock - 1 }).eq('id', blackSheep.id);
-
-        const { count: attemptsAfter } = await supabase.from('leads').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
-        const { count: unlocksAfter } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
-        const maxAtt = 3 + (unlocksAfter || 0) * 3;
-        const att = attemptsAfter || 0;
-
-        console.log(`[EASTER EGG] Premio forzado: THE BLACK SHEEP (POD) para ${whatsapp}`);
-        return res.json({
-          prize: blackSheep,
-          reels: [1, 1, 1],
-          attempts: att,
-          remaining: Math.max(0, maxAtt - att),
-          isWin: true,
-          hasWon: true,
-          allWon: false
-        });
-      }
-    }
-    // ---- END FORCED PRIZE PATH ----
+    // ---- EASTER EGG: preparar flag (la validación de historial ocurre más abajo) ----
+    const easterEggRequested = force_prize === true && _fk === FORCE_SECRET;
+    // ---- END FLAG ----
 
     // Calcular intentos máximos: 3 base + 3 por cada desbloqueo manual
     const { count: unlocksCount } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
@@ -265,6 +235,24 @@ async function startServer() {
         silentConversion = true;
       }
     }
+
+    // ---- EASTER EGG OVERRIDE: sólo actúa en el tiro 3, si el usuario no ganó THE BLACK SHEEP antes ----
+    if (easterEggRequested && !isForcedLoser) {
+      const alreadyWonBlackSheep = alreadyWonPrizeIds.includes(1);
+      if (alreadyWonBlackSheep) {
+        console.log(`[EASTER EGG] Ignorado: ${whatsapp} ya ganó THE BLACK SHEEP anteriormente. Flujo normal.`);
+      } else {
+        const blackSheep = filteredPrizes.find(p => p.id === 1);
+        if (blackSheep && blackSheep.stock > 0) {
+          selectedPrize = blackSheep;
+          silentConversion = false; // Garantizar victoria real
+          console.log(`[EASTER EGG] Premio forzado activado en tiro 3 para ${whatsapp}`);
+        } else {
+          console.warn(`[EASTER EGG] THE BLACK SHEEP sin stock, ignorando force para ${whatsapp}.`);
+        }
+      }
+    }
+    // ---- END EASTER EGG OVERRIDE ----
 
     if (!selectedPrize) {
       return res.status(500).json({ error: "No hay premios disponibles" });
