@@ -181,31 +181,27 @@ export default function App() {
 
   // --- Hidden Prize Force Easter Egg ---
   const isPrizeForced = useRef(false);
-  const forcedWinSession = useRef(false); // true mientras el Easter Egg está activo en una ronda
+  const forcedWinSession = useRef(false);
   const tapTimestamps = useRef<number[]>([]);
   const [logoFlash, setLogoFlash] = useState(false);
-  const [autoResetCountdown, setAutoResetCountdown] = useState<number | null>(null);
 
-  // Countdown ticker para auto-reset
-  useEffect(() => {
-    if (autoResetCountdown === null) return;
-    if (autoResetCountdown <= 0) {
-      // Reset completo para el siguiente cliente
-      setResult(null);
-      setShowResultOverlay(false);
-      setWhatsapp('+595');
-      setHasWon(false);
-      setAllWon(false);
-      setRemainingAttempts(null);
-      setAttemptsCount(0);
-      setError('');
-      forcedWinSession.current = false;
-      setAutoResetCountdown(null);
-      return;
-    }
-    const timer = setTimeout(() => setAutoResetCountdown(prev => prev !== null ? prev - 1 : null), 1000);
-    return () => clearTimeout(timer);
-  }, [autoResetCountdown]);
+  // Estado de sesión finalizada (3 intentos agotados sin ganancia)
+  const [sessionFinished, setSessionFinished] = useState(false);
+
+  // Reset manual — único punto de retorno al inicio
+  const handleManualReset = () => {
+    setResult(null);
+    setShowResultOverlay(false);
+    setWhatsapp('+595');
+    setHasWon(false);
+    setAllWon(false);
+    setRemainingAttempts(null);
+    setAttemptsCount(0);
+    setError('');
+    setSessionFinished(false);
+    forcedWinSession.current = false;
+    isPrizeForced.current = false;
+  };
 
   const handleLogoTap = () => {
     const now = Date.now();
@@ -551,6 +547,11 @@ export default function App() {
         setHasWon(data.hasWon);
         setAllWon(data.allWon);
 
+        // Si se agotaron los intentos, marcar la sesión como finalizada
+        if (data.remaining <= 0) {
+          setSessionFinished(true);
+        }
+
         if (spinAudio.current) {
           spinAudio.current.pause();
         }
@@ -559,11 +560,10 @@ export default function App() {
           setShowResultOverlay(true);
           if (data.isWin) {
             setHasWon(true);
-            // Si ganamos Y estamos en sesión forzada, resetear el flag y arrancar countdown
+            // Si ganamos en sesión forzada, solo limpiar el flag - sin auto-reset
             if (forcedWinSession.current) {
               isPrizeForced.current = false;
               forcedWinSession.current = false;
-              setAutoResetCountdown(12); // 12 segundos para ver el QR y reclamar
             }
             if (winAudio.current) {
               winAudio.current.currentTime = 0;
@@ -740,13 +740,35 @@ export default function App() {
             animate={{ scale: 1, opacity: 1 }}
             className={cn(
               "relative p-1 rounded-3xl overflow-hidden",
-              !result?.isWin
-                ? "bg-cyber-blue/20"
-                : "bg-gradient-to-r from-cyber-pink via-cyber-blue to-cyber-pink animate-festive-glow"
+              result?.isWin
+                ? "bg-gradient-to-r from-cyber-pink via-cyber-blue to-cyber-pink animate-festive-glow"
+                : "bg-cyber-blue/20"
             )}
           >
             <div className="bg-cyber-dark/95 backdrop-blur-xl rounded-[calc(1.5rem-1px)] p-8 text-center space-y-4">
-              {!result?.isWin ? (
+
+              {/* ---- CASO 1: Sesión terminada sin premio ---- */}
+              {sessionFinished && !result?.isWin ? (
+                <>
+                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto">
+                    <Star className="w-8 h-8 text-white/30" />
+                  </div>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-widest">Gracias por<br/>participar</h2>
+                  <p className="text-[11px] text-cyber-blue/60 font-mono">
+                    Has usado todos tus intentos.<br/>
+                    ¡Vuelve pronto con una nueva compra!
+                  </p>
+                  <div className="w-full h-px bg-white/10" />
+                  <button
+                    onClick={handleManualReset}
+                    className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-black rounded-xl uppercase tracking-widest transition-all text-sm"
+                  >
+                    Cerrar
+                  </button>
+                </>
+
+              ) : !result?.isWin ? (
+                /* ---- CASO 2: Perdió pero quedan intentos ---- */
                 <>
                   <RefreshCw className="w-12 h-12 text-gray-400 mx-auto" />
                   <h2 className="text-2xl font-bold text-white">¡Casi lo logras!</h2>
@@ -754,16 +776,17 @@ export default function App() {
                     onClick={() => {
                       setResult(null);
                       setShowResultOverlay(false);
-                      if (remainingAttempts !== null && remainingAttempts <= 0) {
-                        setWhatsapp('+595');
-                      }
                     }}
                     className="w-full py-3 bg-cyber-blue text-black font-black rounded-xl"
                   >
-                    {remainingAttempts !== null && remainingAttempts > 0 ? `Intentar de nuevo (${3 - (attemptsCount % 3)})` : 'Intentar de nuevo'}
+                    {remainingAttempts !== null && remainingAttempts > 0
+                      ? `Intentar de nuevo (${remainingAttempts})`
+                      : 'Intentar de nuevo'}
                   </button>
                 </>
+
               ) : (
+                /* ---- CASO 3: GANADOR ---- */
                 <>
                   <Trophy className="w-12 h-12 text-cyber-pink mx-auto" />
                   <h2 className="text-3xl font-black text-white neon-text uppercase">¡GANASTE!</h2>
@@ -780,41 +803,15 @@ export default function App() {
                       </p>
                     </div>
                   </div>
-
-                  {/* Auto-reset countdown (solo visible en sesión Easter Egg) */}
-                  {autoResetCountdown !== null && (
-                    <div className="space-y-2 pt-1">
-                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-cyber-pink rounded-full"
-                          initial={{ width: '100%' }}
-                          animate={{ width: `${(autoResetCountdown / 12) * 100}%` }}
-                          transition={{ duration: 1, ease: 'linear' }}
-                        />
-                      </div>
-                      <p className="text-[10px] text-white/30 font-mono tracking-widest uppercase">
-                        Próximo cliente en {autoResetCountdown}s
-                      </p>
-                    </div>
-                  )}
-
                   <button
-                    onClick={() => {
-                      setAutoResetCountdown(null);
-                      forcedWinSession.current = false;
-                      isPrizeForced.current = false;
-                      setResult(null);
-                      setShowResultOverlay(false);
-                      setWhatsapp('+595');
-                      setHasWon(false);
-                      setAllWon(false);
-                    }}
+                    onClick={handleManualReset}
                     className="text-cyber-blue/40 text-[10px] hover:text-cyber-blue/60 transition-colors"
                   >
                     Finalizar sesión
                   </button>
                 </>
               )}
+
             </div>
           </motion.div>
         )}
