@@ -227,38 +227,59 @@ async function startServer() {
       // Tiros 1 y 2: Forzamos pérdida ("Sigue Participando")
       selectedPrize = filteredPrizes.find(isLoser) || visualBaitPrize;
     } else {
-      // Tiro 3: Sorteo real (usamos el visualBaitPrize que ya sorteamos arriba)
-      selectedPrize = visualBaitPrize;
-      
-      // REGLA DE EXCLUSIÓN: Si el premio CAPTADO ya lo tiene, se convierte en pérdida silenciosa visualmente.
-      if (selectedPrize && !isLoser(selectedPrize) && alreadyWonPrizeIds.includes(selectedPrize.id)) {
-        silentConversion = true;
-      }
-    }
+      // Tiro 3: JERARQUÍA ESTRICTA DE PREMIOS
+      // Lista de premios reales (con stock, no perdedores, y no ganados previamente)
+      const availableRealPrizes = filteredPrizes.filter(
+        p => !isLoser(p) && !alreadyWonPrizeIds.includes(p.id)
+      );
 
-    // ---- EASTER EGG OVERRIDE: sólo actúa en el tiro 3, si el usuario no ganó THE BLACK SHEEP antes ----
-    if (easterEggRequested && !isForcedLoser) {
-      const alreadyWonBlackSheep = alreadyWonPrizeIds.includes(1);
-      if (alreadyWonBlackSheep) {
-        console.log(`[EASTER EGG] Ignorado: ${whatsapp} ya ganó THE BLACK SHEEP anteriormente. Flujo normal.`);
-      } else {
-        const blackSheep = filteredPrizes.find(p => p.id === 1);
-        if (blackSheep && blackSheep.stock > 0) {
-          selectedPrize = blackSheep;
-          silentConversion = false; // Garantizar victoria real
+      let forcedPrize = null;
+
+      // Prioridad 1: Easter Egg (THE BLACK SHEEP)
+      if (easterEggRequested) {
+        const blackSheep = availableRealPrizes.find(p => p.id === 1 || p.name.toUpperCase().includes('BLACK SHEEP'));
+        if (blackSheep) {
+          forcedPrize = blackSheep;
           console.log(`[EASTER EGG] Premio forzado activado en tiro 3 para ${whatsapp}`);
         } else {
-          console.warn(`[EASTER EGG] THE BLACK SHEEP sin stock, ignorando force para ${whatsapp}.`);
+          console.warn(`[EASTER EGG] Ignorado: THE BLACK SHEEP sin stock o ya ganado para ${whatsapp}.`);
         }
       }
+
+      // Prioridad 2: Garantía General (Llavero)
+      if (!forcedPrize) {
+        const llavero = availableRealPrizes.find(p => p.name.toUpperCase().includes('LLAVERO'));
+        if (llavero) {
+          forcedPrize = llavero;
+          console.log(`[P2 LLAVERO] Garantía activada en tiro 3 para ${whatsapp}`);
+        }
+      }
+
+      // Prioridad 3: Siguiente Premio Disponible
+      if (!forcedPrize) {
+        if (availableRealPrizes.length > 0) {
+          // Toma el primero de la lista (ordenados por ID original)
+          forcedPrize = availableRealPrizes[0];
+          console.log(`[P3 RESTANTE] Premio ${forcedPrize.name} asignado en tiro 3 para ${whatsapp}`);
+        }
+      }
+
+      // Prioridad 4: Fallback absoluto
+      if (forcedPrize) {
+        selectedPrize = forcedPrize;
+        silentConversion = false; // Victoria real confirmada
+      } else {
+        // Ya ganó todos los premios o no hay stock
+        selectedPrize = allPrizes.find(isLoser) || visualBaitPrize;
+        console.log(`[P4 TODOS GANADOS] No hay premios nuevos para ${whatsapp}, asignado Sigue Participando`);
+      }
     }
-    // ---- END EASTER EGG OVERRIDE ----
 
     if (!selectedPrize) {
       return res.status(500).json({ error: "No hay premios disponibles" });
     }
 
-    // Si hubo conversión silenciosa o fue tiro forzado, para la base de datos es un "Sigue Participando"
+    // Si hubo conversión silenciosa o fue tiro forzado de los intentos 1 y 2, es "Sigue Participando"
     const finalPrizeToRecord = (silentConversion || isForcedLoser) ? allPrizes.find(isLoser) || selectedPrize : selectedPrize;
 
     // Guardamos el lead en Supabase con el premio REAL adjudicado
