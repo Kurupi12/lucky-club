@@ -237,7 +237,7 @@ async function startServer() {
 
       // Prioridad 1: Easter Egg (THE BLACK SHEEP)
       if (easterEggRequested) {
-        const blackSheep = availableRealPrizes.find(p => p.id === 1 || p.name.toUpperCase().includes('BLACK SHEEP'));
+        const blackSheep = availableRealPrizes.find(p => p.id === 1);
         if (blackSheep) {
           forcedPrize = blackSheep;
           console.log(`[EASTER EGG] Premio forzado activado en tiro 3 para ${whatsapp}`);
@@ -246,12 +246,12 @@ async function startServer() {
         }
       }
 
-      // Prioridad 2: Garantía General (Llavero)
+      // Prioridad 2: Garantía General (Colgante / Llavero)
       if (!forcedPrize) {
-        const llavero = availableRealPrizes.find(p => p.name.toUpperCase().includes('LLAVERO'));
-        if (llavero) {
-          forcedPrize = llavero;
-          console.log(`[P2 LLAVERO] Garantía activada en tiro 3 para ${whatsapp}`);
+        const colgante = availableRealPrizes.find(p => p.id === 2);
+        if (colgante) {
+          forcedPrize = colgante;
+          console.log(`[P2 COLGANTE] Garantía activada en tiro 3 para ${whatsapp}`);
         }
       }
 
