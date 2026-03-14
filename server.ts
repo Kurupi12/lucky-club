@@ -174,9 +174,8 @@ async function startServer() {
       return res.status(400).json({ error: "WhatsApp inválido" });
     }
 
-    // ---- EASTER EGG: preparar flag (la validación de historial ocurre más abajo) ----
-    const easterEggRequested = force_prize === true && _fk === FORCE_SECRET;
-    // ---- END FLAG ----
+    // El flag del Easter Egg se resolverá después de cargar el historial.
+    const isSecretTokenValid = force_prize === true && _fk === FORCE_SECRET;
 
     // Calcular intentos máximos: 3 base + 3 por cada desbloqueo manual
     const { count: unlocksCount } = await supabase.from('manual_unlocks').select('*', { count: 'exact', head: true }).eq('whatsapp', whatsapp);
@@ -189,8 +188,12 @@ async function startServer() {
       return res.status(400).json({ error: "Ya agotaste tus intentos disponibles." });
     }
 
-    const { data: wonLeads } = await supabase.from('leads').select('prize_id, prizes!inner(name)').eq('whatsapp', whatsapp).neq('prizes.name', 'Sigue Participando');
+    // Cargar TODO el historial de IDs ganados (excluyendo "Sigue Participando" que suele ser ID 4 u otros perdedores genericos en isLoser flag posterior)
+    const { data: wonLeads } = await supabase.from('leads').select('prize_id').eq('whatsapp', whatsapp);
     const alreadyWonPrizeIds = wonLeads?.map(l => l.prize_id) || [];
+
+    // Bloqueo absoluto del Easter Egg si ya lo ganó
+    const easterEggRequested = isSecretTokenValid && !alreadyWonPrizeIds.includes(1);
 
     // Obtener premios del inventario
     const { data: allPrizes } = await supabase.from('prizes').select('*').order('id');
@@ -255,12 +258,23 @@ async function startServer() {
         }
       }
 
-      // Prioridad 3: Siguiente Premio Disponible
+      // Prioridad 3: Siguiente Premio Disponible (Por Porcentaje)
       if (!forcedPrize) {
         if (availableRealPrizes.length > 0) {
-          // Toma el primero de la lista (ordenados por ID original)
-          forcedPrize = availableRealPrizes[0];
-          console.log(`[P3 RESTANTE] Premio ${forcedPrize.name} asignado en tiro 3 para ${whatsapp}`);
+          const totalProbP3 = availableRealPrizes.reduce((sum, p) => sum + p.probability, 0);
+          let randomRollP3 = Math.random() * totalProbP3;
+          
+          for (const p of availableRealPrizes) {
+            randomRollP3 -= p.probability;
+            if (randomRollP3 <= 0) {
+              forcedPrize = p;
+              break;
+            }
+          }
+          // Fallback de seguridad matemático
+          if (!forcedPrize) forcedPrize = availableRealPrizes[0];
+          
+          console.log(`[P3 RESTANTE PROBABILIDAD] Premio ${forcedPrize.name} asignado en tiro 3 para ${whatsapp}`);
         }
       }
 
