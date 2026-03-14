@@ -862,7 +862,7 @@ export default function App() {
 
       <AnimatePresence>
         {showAdmin && (
-          <div className="fixed inset-0 bg-black/90 z-50 p-4 h-screen overflow-hidden">
+          <div className="fixed inset-0 bg-black/90 z-50 p-4 h-[100dvh] overflow-y-auto">
             <div className="max-w-4xl mx-auto py-10">
               <div className="flex justify-between border-b border-white/10 pb-4 mb-8">
                 <h2 className="text-2xl font-bold text-white">Panel de Control</h2>
@@ -1022,8 +1022,8 @@ export default function App() {
                         )}
                       </div>
                     </div>
-                    <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                      <table className="w-full text-left text-sm">
+                    <div className="bg-white/5 border border-white/10 rounded-xl overflow-y-auto max-h-[500px]">
+                      <table className="w-full text-left text-sm relative">
                         <thead className="bg-white/10 text-white/60 uppercase text-[10px] tracking-widest">
                           <tr>
                             <th className="p-3 md:p-4">WhatsApp</th>
