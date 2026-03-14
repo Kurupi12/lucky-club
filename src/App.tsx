@@ -735,7 +735,7 @@ export default function App() {
                   {reelsSpinning.some(s => s) ? 'PROCESANDO...' : (isLoadingStatus ? 'VERIFICANDO...' : (sessionFinished ? 'SESIÓN FINALIZADA' : 'GIRAR AHORA'))}
                 </button>
                 
-                {(sessionFinished || error === 'Este número ya jugó') && !reelsSpinning.some(s => s) && (
+                {error === 'Este número ya jugó' && !reelsSpinning.some(s => s) && (
                   <button
                     onClick={() => setShowUnlockModal(true)}
                     className="absolute -top-3 -right-3 w-10 h-10 bg-cyber-dark border-2 border-cyber-blue rounded-full flex items-center justify-center text-cyber-blue shadow-[0_0_15px_rgba(0,255,255,0.6)] hover:scale-110 transition-transform z-20 animate-pulse"
