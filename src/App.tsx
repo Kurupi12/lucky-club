@@ -597,7 +597,7 @@ export default function App() {
 
 
   return (
-    <div className="min-h-screen w-full relative flex flex-col items-center pt-32 pb-12 md:pt-44 px-4 md:px-8 bg-cyber-dark overflow-x-hidden">
+    <div className="h-[100dvh] w-full relative flex flex-col items-center justify-center px-4 md:px-8 bg-cyber-dark overflow-hidden">
       <div className="fixed inset-0 z-0 overflow-hidden">
         <img
           src="/fondo_general.jpg"
@@ -611,7 +611,7 @@ export default function App() {
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="text-center mb-8 z-10"
+        className="text-center mb-4 z-10 shrink-0"
       >
         <h1
           onClick={handleLogoTap}
@@ -627,10 +627,8 @@ export default function App() {
         </p>
       </motion.div>
 
-      <motion.div
-        layout
-        animate={{}}
-        className="w-full max-w-5xl bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 md:p-12 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative overflow-hidden"
+      <div
+        className="w-full max-w-5xl flex-shrink overflow-y-auto bg-black/60 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-6 md:p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 relative"
       >
         {!showResultOverlay ? (
           <div className="space-y-8">
@@ -735,9 +733,7 @@ export default function App() {
             </div>
           </div>
         ) : (
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+          <div
             className={cn(
               "relative p-1 rounded-3xl overflow-hidden",
               result?.isWin
@@ -799,11 +795,11 @@ export default function App() {
               )}
 
             </div>
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
 
-      <div className="mt-8 text-center text-cyber-blue/30 font-mono text-[10px]">
+      <div className="mt-4 text-center text-cyber-blue/30 font-mono text-[10px] shrink-0">
         Protocolo de Recompensas v2.4 // Kiosk Mode Active
       </div>
 
@@ -817,7 +813,7 @@ export default function App() {
 
       <AnimatePresence>
         {showAuthModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-sm bg-black/80 border-2 border-cyber-blue/40 rounded-3xl p-8 shadow-[0_0_30px_rgba(0,255,255,0.15)] relative">
               <button onClick={() => { setShowAuthModal(false); setAuthError(''); setTempPassword(''); }} className="absolute top-4 right-4 text-white/40 hover:text-cyber-pink transition-colors">
                 <X className="w-5 h-5" />
@@ -860,13 +856,13 @@ export default function App() {
                 </button>
               </form>
             </div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
         {showAdmin && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/90 z-50 p-4 h-screen overflow-hidden">
             <div className="max-w-4xl mx-auto py-10">
               <div className="flex justify-between border-b border-white/10 pb-4 mb-8">
                 <h2 className="text-2xl font-bold text-white">Panel de Control</h2>
@@ -1061,18 +1057,13 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
         {showUnlockModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+          <div
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-cyber-dark/90 backdrop-blur-sm"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
+            <div
               className="w-full max-w-sm bg-black/80 border-2 border-cyber-blue rounded-2xl p-6 shadow-[0_0_30px_rgba(0,255,255,0.3)] relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-4">
@@ -1121,8 +1112,8 @@ export default function App() {
                   </button>
                 </form>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </div>
