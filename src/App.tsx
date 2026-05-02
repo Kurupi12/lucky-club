@@ -341,13 +341,21 @@ export default function App() {
         fetch('/api/admin/leads', { headers: { 'Authorization': adminPassword } }),
         fetch('/api/admin/settings', { headers: { 'Authorization': adminPassword } })
       ]);
-      if (!pRes.ok) throw new Error("Unauthorized");
+      if (pRes.status === 401 || lRes.status === 401 || sRes.status === 401) {
+        throw new Error("Unauthorized");
+      }
+      if (!pRes.ok) throw new Error("DatabaseError");
+      
       setPrizes(await pRes.json());
       setLeads(await lRes.json());
       const settings = await sRes.json();
       setAdminMaxAttempts(settings.max_attempts || "3");
-    } catch (e) {
-      setAuthError("🔒 ACCESO DENEGADO. Intenta de nuevo.");
+    } catch (e: any) {
+      if (e.message === "Unauthorized") {
+        setAuthError("🔒 CONTRASEÑA INCORRECTA. Intenta de nuevo.");
+      } else {
+        setAuthError("❌ ERROR DE CONEXIÓN: La base de datos (Supabase) está pausada por inactividad. Inicia sesión en Supabase y reactívala.");
+      }
       setShowAdmin(false);
       setAdminPassword("");
       setShowAuthModal(true);

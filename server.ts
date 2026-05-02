@@ -41,12 +41,17 @@ async function startServer() {
 
   // Get all prizes (Admin)
   app.get("/api/admin/prizes", async (req, res) => {
-    const { data: prizes, error } = await supabase.from('prizes').select('*').order('id');
-    if (error) {
-      console.error("Supabase Error (Prizes):", error);
-      return res.status(500).json({ error: error.message });
+    try {
+      const { data: prizes, error } = await supabase.from('prizes').select('*').order('id');
+      if (error) {
+        console.error("Supabase Error (Prizes):", error);
+        return res.status(500).json({ error: error.message });
+      }
+      res.json(prizes || []);
+    } catch (e: any) {
+      console.error("Supabase Exception (Prizes):", e);
+      res.status(500).json({ error: e.message || 'Database connection error' });
     }
-    res.json(prizes || []);
   });
 
   // Update prize (Admin)
@@ -60,14 +65,19 @@ async function startServer() {
 
   // Get leads (Admin)
   app.get("/api/admin/leads", async (req, res) => {
-    const { data: leads, error } = await supabase.from('leads').select('*, prizes:prize_id (name)').order('created_at', { ascending: false });
-    if (error) return res.status(500).json({ error: error.message });
-    
-    const formattedLeads = leads?.map(lead => ({
-      ...lead,
-      prize_name: lead.prizes?.name || 'Desconocido'
-    })) || [];
-    res.json(formattedLeads);
+    try {
+      const { data: leads, error } = await supabase.from('leads').select('*, prizes:prize_id (name)').order('created_at', { ascending: false });
+      if (error) return res.status(500).json({ error: error.message });
+      
+      const formattedLeads = leads?.map(lead => ({
+        ...lead,
+        prize_name: lead.prizes?.name || 'Desconocido'
+      })) || [];
+      res.json(formattedLeads);
+    } catch (e: any) {
+      console.error("Supabase Exception (Leads):", e);
+      res.status(500).json({ error: e.message || 'Database connection error' });
+    }
   });
 
   // Delete all leads (Admin)
@@ -88,17 +98,22 @@ async function startServer() {
 
   // Get settings (Admin)
   app.get("/api/admin/settings", async (req, res) => {
-    const { data: settings, error } = await supabase.from('settings').select('*');
-    if (error) return res.status(500).json({ error: error.message });
-    
-    const settingsObj = (settings || []).reduce((acc: any, s: any) => {
-      acc[s.key] = s.value;
-      return acc;
-    }, {});
-    
-    // Default fallback if not defined
-    if (!settingsObj.max_attempts) settingsObj.max_attempts = "3";
-    res.json(settingsObj);
+    try {
+      const { data: settings, error } = await supabase.from('settings').select('*');
+      if (error) return res.status(500).json({ error: error.message });
+      
+      const settingsObj = (settings || []).reduce((acc: any, s: any) => {
+        acc[s.key] = s.value;
+        return acc;
+      }, {});
+      
+      // Default fallback if not defined
+      if (!settingsObj.max_attempts) settingsObj.max_attempts = "3";
+      res.json(settingsObj);
+    } catch (e: any) {
+      console.error("Supabase Exception (Settings):", e);
+      res.status(500).json({ error: e.message || 'Database connection error' });
+    }
   });
 
   // Update settings (Admin)
